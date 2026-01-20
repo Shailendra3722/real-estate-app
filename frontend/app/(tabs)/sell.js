@@ -24,6 +24,10 @@ export default function SellScreen() {
     const [propImages, setPropImages] = useState([]);
     const [mapType, setMapType] = useState('standard'); // standard, satellite, hybrid
 
+    // Area with smart units
+    const [area, setArea] = useState('');
+    const [areaUnit, setAreaUnit] = useState('sqft'); // sqft, bigha, biswaa
+
     // Verification State
     const [aadhaarImg, setAadhaarImg] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -55,6 +59,15 @@ export default function SellScreen() {
             })
         ]).start();
     }, []);
+
+    // Auto-switch area unit based on property type
+    React.useEffect(() => {
+        if (propertyType === 'Plot' || propertyType === 'Farm') {
+            setAreaUnit('bigha'); // Land uses bigha/biswaa
+        } else {
+            setAreaUnit('sqft'); // Buildings use square feet
+        }
+    }, [propertyType]);
 
     // Mobile Number Validation
     const handleMobileChange = (text) => {
@@ -271,6 +284,38 @@ export default function SellScreen() {
                         {form.mobile.length === 10 && (
                             <Text style={styles.mobilePreview}>✓ {formatMobile(form.mobile)}</Text>
                         )}
+
+                        {/* Smart Area Field */}
+                        <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 2, marginRight: 10 }]}>
+                                <Text style={styles.label}>
+                                    Area {areaUnit === 'sqft' ? '(Sq. Ft.)' : '(Bigha/Biswaa)'}
+                                </Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder={areaUnit === 'sqft' ? 'e.g. 1200' : 'e.g. 2'}
+                                    placeholderTextColor={COLORS.subText}
+                                    keyboardType="numeric"
+                                    value={area}
+                                    onChangeText={(txt) => setArea(txt.replace(/[^0-9.]/g, ''))}
+                                />
+                            </View>
+                            {areaUnit !== 'sqft' && (
+                                <View style={[styles.inputGroup, { flex: 1 }]}>
+                                    <Text style={styles.label}>Unit</Text>
+                                    <View style={styles.pickerWrap}>
+                                        <Picker
+                                            selectedValue={areaUnit}
+                                            onValueChange={(itemValue) => setAreaUnit(itemValue)}
+                                            style={styles.pickerSmall}
+                                        >
+                                            <Picker.Item label="Bigha" value="bigha" />
+                                            <Picker.Item label="Biswaa" value="biswaa" />
+                                        </Picker>
+                                    </View>
+                                </View>
+                            )}
+                        </View>
 
                         <View style={styles.inputGroup}>
                             <Text style={styles.label}>Description</Text>
@@ -514,6 +559,7 @@ const styles = StyleSheet.create({
     mapTypeBtn: { flexDirection: 'row', alignItems: 'center', padding: 8, backgroundColor: '#EEF2FF', borderRadius: 8 },
     pickerWrap: { borderWidth: 1, borderColor: COLORS.border, borderRadius: SIZES.radius, backgroundColor: COLORS.surface },
     picker: { height: 50 },
+    pickerSmall: { height: 50, fontSize: 14 },
 
     mobilePreview: { fontSize: 12, color: COLORS.success, marginTop: -10, marginBottom: 10, fontWeight: '600' },
 

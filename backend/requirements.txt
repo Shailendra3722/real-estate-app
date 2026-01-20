@@ -12,3 +12,4 @@ pillow
 requests
 python-jose[cryptography]
 passlib[bcrypt]
+cloudinary
