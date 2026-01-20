@@ -31,6 +31,9 @@ app.include_router(verification.router, prefix="/verification", tags=["verificat
 from .api.endpoints import upload
 app.include_router(upload.router, prefix="/api", tags=["upload"])
 
+from .api.endpoints import favorites
+app.include_router(favorites.router, prefix="/favorites", tags=["favorites"])
+
 @app.get("/")
 def read_root():
     return {"message": "AI Real Estate Engine is Running", "status": "active"}

@@ -24,6 +24,8 @@ export default function ProfileScreen() {
     const [avatar, setAvatar] = useState(null);
     const [showDocs, setShowDocs] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
+    const [showFavorites, setShowFavorites] = useState(false);
+    const [favorites, setFavorites] = useState([]);
 
     // Settings State
     const [newPass, setNewPass] = useState('');
@@ -32,6 +34,7 @@ export default function ProfileScreen() {
     // Load profile pic from AsyncStorage on mount
     useEffect(() => {
         loadProfilePic();
+        loadFavorites();
     }, []);
 
     const loadProfilePic = async () => {
@@ -42,6 +45,17 @@ export default function ProfileScreen() {
             }
         } catch (e) {
             console.log('Error loading avatar:', e);
+        }
+    };
+
+    const loadFavorites = async () => {
+        try {
+            const favIds = await AsyncStorage.getItem('@favorites');
+            if (favIds) {
+                setFavorites(JSON.parse(favIds));
+            }
+        } catch (e) {
+            console.log('Error loading favorites:', e);
         }
     };
 
