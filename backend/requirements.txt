@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-multipart
+# For AI/Verification
+pillow
+# pytesseract # Requries system dependency tesseract, adding later if needed or mocking
+# For now we will use Pillow for basic image checks and regex for text simulation to keep it portable first
+requests
+python-jose[cryptography]
+passlib[bcrypt]

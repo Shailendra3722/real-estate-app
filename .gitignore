@@ -1,0 +1,27 @@
+# Systems
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+frontend/web-build/
+frontend/dist/
+
+# Python
+venv/
+__pycache__/
+*.pyc
+.env
+backend/.env
+
+# IDEs
+.idea/
+.vscode/
+
+# Expo
+.expo/
+*.jks
+*.p12
+*.key
+mobile-build/
