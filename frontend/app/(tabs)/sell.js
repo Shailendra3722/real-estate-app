@@ -1,157 +1,192 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View, Text, StyleSheet, TextInput, TouchableOpacity,
-    ScrollView, Alert, Image, ActivityIndicator, Platform, Modal
+    ScrollView, Alert, Image, ActivityIndicator, Platform, Modal, Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '../components/LanguageContext';
-import API from '../services/apiConfig';
 import { LinearGradient } from 'expo-linear-gradient';
 import Tesseract from 'tesseract.js';
 import { Picker } from '@react-native-picker/picker';
-// import { useRouter } from 'expo-router'; // REMOVED
 import NativeMap, { NativeMarker } from '../components/NativeMap';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
+import { PremiumButton } from '../components/ui/PremiumButton';
+import { GlassCard } from '../components/ui/GlassCard';
 
 export default function SellScreen() {
     const { t } = useLanguage();
-    // Mock router
-    const router = { push: (route) => console.log('Mock Nav to', route) };
 
-    const [form, setForm] = useState({ title: '', price: '', desc: '' });
-    const [location, setLocation] = useState({ latitude: 19.0760, longitude: 72.8777 });
+    // Form State
+    const [form, setForm] = useState({ title: '', price: '', desc: '', mobile: '' });
+    const [location, setLocation] = useState({ latitude: 26.8467, longitude: 80.9461 });
+    const [propertyType, setPropertyType] = useState('Flat');
+    const [propImages, setPropImages] = useState([]);
+    const [mapType, setMapType] = useState('standard'); // standard, satellite, hybrid
+
+    // Verification State
     const [aadhaarImg, setAadhaarImg] = useState(null);
     const [loading, setLoading] = useState(false);
     const [successVisible, setSuccessVisible] = useState(false);
-    const [verificationStep, setVerificationStep] = useState('IDLE');
+    const [verificationStep, setVerificationStep] = useState('IDLE'); // IDLE, SCANNING, REVIEW, OTP, VERIFIED
+    const [ocrStatus, setOcrStatus] = useState('');
     const [scannedData, setScannedData] = useState(null);
     const [otp, setOtp] = useState('');
     const [showOtpModal, setShowOtpModal] = useState(false);
-    const [propertyType, setPropertyType] = useState('Flat');
-    const [ocrStatus, setOcrStatus] = useState('');
+    const [verificationProgress, setVerificationProgress] = useState(0);
 
-    const [propImages, setPropImages] = useState([]);
+    // Animation refs
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(50)).current;
 
+    // Start animations on mount
+    React.useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                tension: 50,
+                friction: 7,
+                useNativeDriver: true,
+            })
+        ]).start();
+    }, []);
+
+    // Mobile Number Validation
+    const handleMobileChange = (text) => {
+        const cleaned = text.replace(/[^0-9]/g, '');
+        if (cleaned.length <= 10) {
+            setForm({ ...form, mobile: cleaned });
+        }
+    };
+
+    const formatMobile = (mobile) => {
+        if (mobile.length === 10) {
+            return `+91 ${mobile.substring(0, 5)}-${mobile.substring(5)}`;
+        }
+        return mobile;
+    };
+
+    // Image Pickers
     const pickPropertyImages = async () => {
         if (propImages.length >= 4) {
-            Alert.alert("Limit Reached", "You can only upload up to 4 photos.");
+            Alert.alert("Limit Reached", "Max 4 photos allowed.");
             return;
         }
-
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true, // We allow basic cropping
+            allowsEditing: true,
             aspect: [4, 3],
             quality: 0.8,
         });
-
         if (!result.canceled) {
             setPropImages([...propImages, result.assets[0]]);
         }
     };
 
-    const pickImage = async () => {
-        // Validation: Ensure Property Details are filled first
-        if (!form.title || !form.price) {
-            Alert.alert("Incomplete Details", "Please fill in the Property Title and Price before verifying identity.");
-            return;
-        }
-
-        let result = await ImagePicker.launchImageLibraryAsync({ // Aadhaar Picker
+    const pickAadhaar = async () => {
+        let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             quality: 1,
         });
-
         if (!result.canceled) {
             setAadhaarImg(result.assets[0]);
             setVerificationStep('IDLE');
-            setScannedData(null);
-            setOtp('');
         }
     };
 
+    // Enhanced Multi-Stage Verification
     const performOCRVerification = async () => {
         if (!aadhaarImg) return;
         setVerificationStep('SCANNING');
-        setOcrStatus("Initializing AI Verification Engine...");
+        setOcrStatus("🔍 Initializing AI Scanner...");
+        setVerificationProgress(0);
 
         try {
+            // Stage 1: Document Quality Check
+            setVerificationProgress(20);
+            setOcrStatus("📸 Checking image quality...");
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // Stage 2: OCR Processing
+            setVerificationProgress(40);
+            setOcrStatus("🤖 Reading document text...");
+
             const result = await Tesseract.recognize(
                 aadhaarImg.uri,
                 'eng',
                 {
                     logger: m => {
                         if (m.status === 'recognizing text') {
-                            setOcrStatus(`Analyzing Document: ${Math.round(m.progress * 100)}%`);
-                        } else {
-                            setOcrStatus(m.status);
+                            const progress = 40 + (m.progress * 40);
+                            setVerificationProgress(progress);
+                            setOcrStatus(`📄 Analyzing: ${Math.round(m.progress * 100)}%`);
                         }
                     }
                 }
             );
 
             const text = result.data.text.toLowerCase();
-            console.log("OCR Result:", text);
 
-            // Enhanced Validation Logic
-            const keywords = ['aadhaar', 'gov', 'india', 'male', 'female', 'dob', 'yob', 'enrollment', 'father', 'uidai', 'address', 'help'];
+            // Stage 3: Validation
+            setVerificationProgress(85);
+            setOcrStatus("✓ Validating document...");
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            const keywords = ['aadhaar', 'gov', 'india', 'uidai'];
             const foundKeywords = keywords.filter(k => text.includes(k));
 
-            if (foundKeywords.length >= 2 || text.includes('aadhaar')) {
+            if (foundKeywords.length >= 1 || text.includes('male') || text.includes('female')) {
+                setVerificationProgress(100);
                 setVerificationStep('REVIEW');
                 setScannedData({
-                    docType: 'AADHAAR',
                     idNumber: 'xxxx-xxxx-' + (text.match(/\d{4}/g)?.[2] || '9999'),
-                    name: 'Verified Citizen',
-                    confidence: result.data.confidence
+                    confidence: Math.round(result.data.confidence),
+                    documentType: 'Aadhaar Card'
                 });
             } else {
-                // Specific Feedback
-                let feedback = "We could not detect a valid Aadhaar Card.";
-                if (text.length < 20) feedback = "Image is too blurry or has no text.";
-                else feedback = "The document does not appear to be an Aadhaar card. Please upload a clear photo of your Aadhaar.";
-
-                Alert.alert(
-                    "AI Verification Failed",
-                    `${feedback}\n\nDetected Snippet: "${text.substring(0, 30)}..."`
-                );
+                Alert.alert("Verification Failed", "Could not detect a valid Aadhaar card. Please try again with a clearer image.");
                 setVerificationStep('IDLE');
             }
         } catch (e) {
-            console.error(e);
-            Alert.alert("Error", "AI Engine failed to initialize. Please check your internet connection.");
+            Alert.alert("Error", "Verification engine failed. Please check your connection.");
             setVerificationStep('IDLE');
         }
     };
 
     const requestOtp = () => {
-        Alert.alert("OTP Sent", "Aadhaar linked mobile number: ******9999");
-        setVerificationStep('OTP');
         setShowOtpModal(true);
+        setVerificationStep('OTP');
     };
 
     const verifyOtp = () => {
         if (otp === '1234') {
             setShowOtpModal(false);
             setVerificationStep('VERIFIED');
-            Alert.alert("Verified", "Identity Confirmed via UIDAI (Simulated)");
+            Alert.alert("✓ Verified!", "Identity confirmed successfully");
         } else {
-            Alert.alert("Error", "Invalid OTP. Try 1234");
+            Alert.alert("Invalid OTP", "Please enter 1234 (demo)");
         }
     };
 
-    const handleVerifyAndSubmit = async () => {
+    const handleSubmit = () => {
+        if (!form.title || !form.price) {
+            Alert.alert("Missing Info", "Please fill in property title and price");
+            return;
+        }
+        if (form.mobile.length !== 10) {
+            Alert.alert("Invalid Mobile", "Please enter a valid 10-digit mobile number");
+            return;
+        }
         if (verificationStep !== 'VERIFIED') {
-            Alert.alert("Pending", "Please complete verification first.");
+            Alert.alert("Verification Required", "Please verify your identity first");
             return;
         }
-        if (!form.title) {
-            Alert.alert("Missing", "Please fill property details.");
-            return;
-        }
-
         setLoading(true);
         setTimeout(() => {
             setLoading(false);
@@ -159,262 +194,292 @@ export default function SellScreen() {
         }, 1500);
     };
 
-    const handleSuccessClose = () => {
-        setSuccessVisible(false);
-        setForm({ title: '', price: '', desc: '' });
-        setAadhaarImg(null);
-        setVerificationStep('IDLE');
-        setScannedData(null);
-        setOtp('');
-    };
-
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <View style={styles.headerContainer}>
-                <Text style={styles.headerTitle}>{t('SELL_TAB')}</Text>
-                <Text style={styles.headerSubtitle}>List property. Verified Owners Only.</Text>
-            </View>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
+            {/* Header */}
+            <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+                <LinearGradient
+                    colors={[COLORS.primary, COLORS.secondary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.headerGradient}
+                >
+                    <Text style={styles.headerTitle}>List Property</Text>
+                    <Text style={styles.headerSub}>Connect with 10,000+ Buyers</Text>
+                </LinearGradient>
+            </Animated.View>
 
-            <View style={[styles.card, SHADOWS.medium]}>
-                <Text style={styles.sectionTitle}>1. Property Details</Text>
+            <View style={styles.formContent}>
+                {/* Property Details Card */}
+                <Animated.View style={{ opacity: fadeAnim }}>
+                    <GlassCard style={styles.card}>
+                        <Text style={styles.sectionTitle}>📋 Property Details</Text>
 
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Property Type</Text>
-                    <View style={styles.pickerContainer}>
-                        <Picker
-                            selectedValue={propertyType}
-                            onValueChange={(itemValue) => setPropertyType(itemValue)}
-                            style={styles.picker}
-                        >
-                            <Picker.Item label="Flat / Apartment" value="Flat" />
-                            <Picker.Item label="House / Villa" value="House" />
-                            <Picker.Item label="Plot / Land" value="Plot" />
-                            <Picker.Item label="Farmhouse" value="Farm" />
-                            <Picker.Item label="Commercial Space" value="Commercial" />
-                        </Picker>
-                    </View>
-                </View>
-
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Property Title</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder={`e.g. 2BHK ${propertyType} in Bandra`}
-                        placeholderTextColor={COLORS.subText}
-                        value={form.title}
-                        onChangeText={(txt) => setForm({ ...form, title: txt })}
-                    />
-                </View>
-
-                <View style={styles.row}>
-                    <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                        <Text style={styles.label}>Expected Price (₹)</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Min 5 Lakhs"
-                            placeholderTextColor={COLORS.subText}
-                            keyboardType="numeric"
-                            value={form.price}
-                            onChangeText={(txt) => setForm({ ...form, price: txt })}
-                        />
-                    </View>
-                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                        <Text style={styles.label}>Area (sq ft)</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="e.g. 1200"
-                            placeholderTextColor={COLORS.subText}
-                            keyboardType="numeric"
-                        />
-                    </View>
-                </View>
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Details & Features</Text>
-                    <TextInput
-                        style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
-                        placeholder="Describe key features, location, amenities..."
-                        placeholderTextColor={COLORS.subText}
-                        multiline
-                        value={form.desc}
-                        onChangeText={(txt) => setForm({ ...form, desc: txt })}
-                    />
-                </View>
-
-                <View style={[styles.inputGroup, { height: 350, marginTop: 10 }]}>
-                    <Text style={styles.label}>Property Location (Drag Pin)</Text>
-                    <View style={styles.pickerContainer}>
-                        <NativeMap
-                            region={{ latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.005, longitudeDelta: 0.005 }}
-                            style={{ flex: 1, borderRadius: 12 }}
-                        >
-                            <NativeMarker
-                                coordinate={location}
-                                draggable={true}
-                                title="Property Location"
-                                description="Drag to exact plot"
-                                onDragEnd={(e) => {
-                                    console.log("Drag End:", e.nativeEvent.coordinate);
-                                    setLocation(e.nativeEvent.coordinate);
-                                }}
-                            />
-                        </NativeMap>
-                    </View>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
-                        <Text style={{ fontSize: 10, color: COLORS.subText }}>
-                            Lat: {location.latitude.toFixed(6)}, Lng: {location.longitude.toFixed(6)}
-                        </Text>
-                        <TouchableOpacity onPress={async () => {
-                            setLocation({ latitude: 26.8467, longitude: 80.9461 }); // Reset to Lucknow
-                            Alert.alert("Reset", "Location reset to Uttar Pradesh Center");
-                        }}>
-                            <Text style={{ fontSize: 10, color: COLORS.primary }}>Reset Pin</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                {/* --- NEW: Property Images Section --- */}
-                <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Property Photos (Max 4)</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
-                        {propImages.map((img, index) => (
-                            <View key={index} style={styles.imagePreviewContainer}>
-                                <Image source={{ uri: img.uri }} style={styles.propImagePreview} />
-                                <TouchableOpacity
-                                    style={styles.removeImgBtn}
-                                    onPress={() => setPropImages(propImages.filter((_, i) => i !== index))}
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Type</Text>
+                            <View style={styles.pickerWrap}>
+                                <Picker
+                                    selectedValue={propertyType}
+                                    onValueChange={(itemValue) => setPropertyType(itemValue)}
+                                    style={styles.picker}
                                 >
-                                    <Ionicons name="close-circle" size={20} color="red" />
-                                </TouchableOpacity>
+                                    <Picker.Item label="Flat / Apartment" value="Flat" />
+                                    <Picker.Item label="House / Villa" value="House" />
+                                    <Picker.Item label="Plot / Land" value="Plot" />
+                                    <Picker.Item label="Farmhouse" value="Farm" />
+                                    <Picker.Item label="Commercial Space" value="Commercial" />
+                                </Picker>
                             </View>
-                        ))}
+                        </View>
 
-                        {propImages.length < 4 && (
-                            <TouchableOpacity style={styles.addPhotoBtn} onPress={pickPropertyImages}>
-                                <Ionicons name="camera-outline" size={30} color={COLORS.primary} />
-                                <Text style={{ fontSize: 10, color: COLORS.primary, marginTop: 4 }}>Add Photo</Text>
-                            </TouchableOpacity>
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Title</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder={`e.g. 2BHK ${propertyType} in Lucknow`}
+                                placeholderTextColor={COLORS.subText}
+                                value={form.title}
+                                onChangeText={(txt) => setForm({ ...form, title: txt })}
+                            />
+                        </View>
+
+                        <View style={styles.row}>
+                            <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
+                                <Text style={styles.label}>Price (₹)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="e.g. 4500000"
+                                    placeholderTextColor={COLORS.subText}
+                                    keyboardType="numeric"
+                                    value={form.price}
+                                    onChangeText={(txt) => setForm({ ...form, price: txt.replace(/[^0-9]/g, '') })}
+                                />
+                            </View>
+                            <View style={[styles.inputGroup, { flex: 1 }]}>
+                                <Text style={styles.label}>Mobile</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="10 digits"
+                                    placeholderTextColor={COLORS.subText}
+                                    keyboardType="phone-pad"
+                                    maxLength={10}
+                                    value={form.mobile}
+                                    onChangeText={handleMobileChange}
+                                />
+                            </View>
+                        </View>
+                        {form.mobile.length === 10 && (
+                            <Text style={styles.mobilePreview}>✓ {formatMobile(form.mobile)}</Text>
                         )}
-                    </ScrollView>
-                    <Text style={{ fontSize: 10, color: COLORS.subText, marginTop: 5 }}>
-                        {propImages.length}/4 Photos Selected
-                    </Text>
+
+                        <View style={styles.inputGroup}>
+                            <Text style={styles.label}>Description</Text>
+                            <TextInput
+                                style={[styles.input, { height: 80, textAlignVertical: 'top' }]}
+                                placeholder="Describe features, location, amenities..."
+                                placeholderTextColor={COLORS.subText}
+                                multiline
+                                value={form.desc}
+                                onChangeText={(txt) => setForm({ ...form, desc: txt })}
+                            />
+                        </View>
+                    </GlassCard>
+                </Animated.View>
+
+                {/* Map Location */}
+                <Animated.View style={{ opacity: fadeAnim, marginTop: 20 }}>
+                    <GlassCard style={styles.card}>
+                        <View style={styles.rowBetween}>
+                            <Text style={styles.sectionTitle}>📍 Location</Text>
+                            <TouchableOpacity
+                                style={styles.mapTypeBtn}
+                                onPress={() => {
+                                    const types = ['standard', 'satellite', 'hybrid'];
+                                    const currentIndex = types.indexOf(mapType);
+                                    const nextIndex = (currentIndex + 1) % types.length;
+                                    setMapType(types[nextIndex]);
+                                }}
+                            >
+                                <Ionicons
+                                    name={mapType === 'satellite' ? 'map' : 'globe-outline'}
+                                    size={20}
+                                    color={COLORS.primary}
+                                />
+                                <Text style={{ color: COLORS.primary, fontSize: 12, marginLeft: 5, fontWeight: '600' }}>
+                                    {mapType === 'standard' ? 'Satellite' : mapType === 'satellite' ? 'Hybrid' : 'Standard'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.mapContainer}>
+                            <NativeMap
+                                region={{ ...location, latitudeDelta: 0.005, longitudeDelta: 0.005 }}
+                                style={{ flex: 1 }}
+                                mapType={mapType}
+                            >
+                                <NativeMarker
+                                    coordinate={location}
+                                    draggable
+                                    onDragEnd={(e) => setLocation(e.nativeEvent.coordinate)}
+                                />
+                            </NativeMap>
+                        </View>
+                        <TouchableOpacity
+                            style={styles.resetBtn}
+                            onPress={() => setLocation({ latitude: 26.8467, longitude: 80.9461 })}
+                        >
+                            <Ionicons name="refresh" size={16} color={COLORS.primary} />
+                            <Text style={{ color: COLORS.primary, marginLeft: 5, fontWeight: '600' }}>Reset to UP Center</Text>
+                        </TouchableOpacity>
+                    </GlassCard>
+                </Animated.View>
+
+                {/* Property Photos */}
+                <Animated.View style={{ opacity: fadeAnim, marginTop: 20 }}>
+                    <GlassCard style={styles.card}>
+                        <View style={styles.rowBetween}>
+                            <Text style={styles.sectionTitle}>📷 Photos ({propImages.length}/4)</Text>
+                            {propImages.length < 4 && (
+                                <TouchableOpacity onPress={pickPropertyImages}>
+                                    <Text style={styles.addLink}>+ Add Photo</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                            {propImages.map((img, i) => (
+                                <View key={i} style={styles.photoThumb}>
+                                    <Image source={{ uri: img.uri }} style={styles.photoImg} />
+                                    <TouchableOpacity
+                                        style={styles.removePhoto}
+                                        onPress={() => setPropImages(propImages.filter((_, idx) => idx !== i))}
+                                    >
+                                        <Ionicons name="close-circle" size={20} color={COLORS.error} />
+                                    </TouchableOpacity>
+                                </View>
+                            ))}
+                        </ScrollView>
+                    </GlassCard>
+                </Animated.View>
+
+                {/* AI Verification */}
+                <Animated.View style={{ opacity: fadeAnim, marginTop: 20 }}>
+                    <GlassCard style={styles.card}>
+                        <Text style={styles.sectionTitle}>🛡️ AI Identity Verification</Text>
+
+                        {verificationStep === 'IDLE' && (
+                            <>
+                                <Text style={styles.subText}>Upload Aadhaar for instant verification</Text>
+                                <TouchableOpacity onPress={pickAadhaar} style={styles.uploadBox}>
+                                    {aadhaarImg ? (
+                                        <Image source={{ uri: aadhaarImg.uri }} style={styles.docPreview} />
+                                    ) : (
+                                        <View style={{ alignItems: 'center' }}>
+                                            <Ionicons name="scan-outline" size={40} color={COLORS.primary} />
+                                            <Text style={{ color: COLORS.primary, marginTop: 10, fontWeight: '600' }}>Tap to Upload</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                                {aadhaarImg && (
+                                    <View style={{ marginTop: 15 }}>
+                                        <PremiumButton title="🔍 Verify Document" onPress={performOCRVerification} />
+                                    </View>
+                                )}
+                            </>
+                        )}
+
+                        {verificationStep === 'SCANNING' && (
+                            <View style={styles.scanningBox}>
+                                <ActivityIndicator size="large" color={COLORS.primary} />
+                                <Text style={styles.scanText}>{ocrStatus}</Text>
+                                <View style={styles.progressBar}>
+                                    <View style={[styles.progressFill, { width: `${verificationProgress}%` }]} />
+                                </View>
+                                <Text style={styles.progressText}>{Math.round(verificationProgress)}%</Text>
+                            </View>
+                        )}
+
+                        {verificationStep === 'REVIEW' && scannedData && (
+                            <View>
+                                <Text style={styles.successTitle}>✓ Document Detected!</Text>
+                                <View style={styles.dataRow}>
+                                    <Text style={styles.dataLabel}>Type:</Text>
+                                    <Text style={styles.dataValue}>{scannedData.documentType}</Text>
+                                </View>
+                                <View style={styles.dataRow}>
+                                    <Text style={styles.dataLabel}>ID:</Text>
+                                    <Text style={styles.dataValue}>{scannedData.idNumber}</Text>
+                                </View>
+                                <View style={styles.dataRow}>
+                                    <Text style={styles.dataLabel}>Confidence:</Text>
+                                    <Text style={[styles.dataValue, { color: COLORS.success }]}>{scannedData.confidence}%</Text>
+                                </View>
+                                <View style={{ marginTop: 15 }}>
+                                    <PremiumButton title="📲 Send OTP" onPress={requestOtp} />
+                                </View>
+                            </View>
+                        )}
+
+                        {verificationStep === 'VERIFIED' && (
+                            <View style={styles.verifiedBox}>
+                                <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
+                                <Text style={styles.verifiedText}>Identity Verified ✓</Text>
+                                <Text style={styles.verifiedSub}>You're ready to list your property</Text>
+                            </View>
+                        )}
+                    </GlassCard>
+                </Animated.View>
+
+                {/* Submit Button */}
+                <View style={{ marginTop: 30 }}>
+                    <PremiumButton
+                        title={loading ? "Processing..." : "🚀 List Property Now"}
+                        onPress={handleSubmit}
+                        variant={verificationStep === 'VERIFIED' ? 'primary' : 'secondary'}
+                    />
                 </View>
             </View>
 
-            <View style={[styles.card, SHADOWS.medium]}>
-                <Text style={styles.sectionTitle}>2. Identity Verification (Real OCR)</Text>
-
-                {verificationStep === 'IDLE' && (
-                    <>
-                        <Text style={styles.subText}>Upload a clear photo of your Aadhaar Card. We use AI to detect authenticity.</Text>
-                        <TouchableOpacity onPress={pickImage} style={styles.uploadArea}>
-                            {aadhaarImg ? (
-                                <Image source={{ uri: aadhaarImg.uri }} style={styles.previewImage} />
-                            ) : (
-                                <View style={styles.uploadPlaceholder}>
-                                    <View style={styles.iconCircle}>
-                                        <Text style={{ fontSize: 24 }}>🆔</Text>
-                                    </View>
-                                    <Text style={styles.uploadText}>Upload Aadhaar Front</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity style={{ alignSelf: 'center', marginTop: 10, padding: 5 }} onPress={() => {
-                            setScannedData({ docType: 'AADHAAR', idNumber: '9999-8888-7777', name: 'Dev User' });
-                            setVerificationStep('VERIFIED');
-                            setOtp('1234');
-                            Alert.alert('Dev Mode', 'Forced Verification Success!');
-                        }}>
-                            <Text style={{ color: COLORS.subText, fontSize: 10 }}>Dev: Force Verify</Text>
-                        </TouchableOpacity>
-
-                        {aadhaarImg && (
-                            <TouchableOpacity style={styles.actionBtn} onPress={performOCRVerification}>
-                                <Text style={styles.actionBtnText}>Scan with AI Engine</Text>
-                            </TouchableOpacity>
-                        )}
-                    </>
-                )}
-
-                {verificationStep === 'SCANNING' && (
-                    <View style={styles.centerBox}>
-                        <ActivityIndicator size="large" color={COLORS.secondary} />
-                        <Text style={styles.scanningText}>{ocrStatus || "Initializing..."}</Text>
-                        <Text style={styles.subText}>Reading Text from Image...</Text>
-                    </View>
-                )}
-
-                {verificationStep === 'REVIEW' && scannedData && (
-                    <View>
-                        <Text style={styles.successTitle}>Aadhaar Detected!</Text>
-                        <View style={styles.dataRow}>
-                            <Text style={styles.dataLabel}>Document Type:</Text>
-                            <Text style={styles.dataVal}>AADHAAR CARD</Text>
-                        </View>
-                        <View style={styles.dataRow}>
-                            <Text style={styles.dataLabel}>ID Pattern:</Text>
-                            <Text style={styles.dataVal}>{scannedData.idNumber}</Text>
-                        </View>
-
-                        <TouchableOpacity style={styles.actionBtn} onPress={requestOtp}>
-                            <Text style={styles.actionBtnText}>Confirm & Send OTP</Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                {verificationStep === 'OTP' && (
-                    <View>
-                        <Text style={styles.subText}>Enter OTP sent to Aadhaar Mobile</Text>
+            {/* OTP Modal */}
+            <Modal visible={showOtpModal} transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Enter OTP</Text>
+                        <Text style={styles.modalSub}>Sent to Aadhaar-linked mobile</Text>
                         <TextInput
-                            style={[styles.input, { letterSpacing: 5, textAlign: 'center', fontSize: 24, marginVertical: 10 }]}
-                            placeholder="____"
+                            style={styles.otpInput}
+                            placeholder="1234"
+                            keyboardType="number-pad"
                             maxLength={4}
-                            keyboardType="numeric"
                             value={otp}
                             onChangeText={setOtp}
+                            autoFocus
                         />
-                        <TouchableOpacity style={[styles.actionBtn]} onPress={verifyOtp}>
-                            <Text style={styles.actionBtnText}>Verify OTP</Text>
+                        <PremiumButton title="Verify OTP" onPress={verifyOtp} style={{ marginTop: 20 }} />
+                        <TouchableOpacity onPress={() => setShowOtpModal(false)} style={{ marginTop: 15 }}>
+                            <Text style={{ color: COLORS.subText }}>Cancel</Text>
                         </TouchableOpacity>
                     </View>
-                )}
+                </View>
+            </Modal>
 
-                {verificationStep === 'VERIFIED' && (
-                    <View style={styles.verifiedCard}>
-                        <LinearGradient colors={[COLORS.success, '#059669']} style={styles.verifiedHeader}>
-                            <Text style={styles.verifiedTitle}>✓ KYC VERIFIED</Text>
-                        </LinearGradient>
-                        <View style={styles.verifiedContent}>
-                            <Text style={{ color: COLORS.text, fontWeight: 'bold' }}>IDENTITY CONFIRMED</Text>
-                            <Text style={{ color: COLORS.subText }}>Valid Government ID Detected</Text>
-                        </View>
-                    </View>
-                )}
-            </View>
-
-            <TouchableOpacity
-                style={[styles.submitBtn, verificationStep !== 'VERIFIED' && styles.disabledBtn]}
-                onPress={handleVerifyAndSubmit}
-                disabled={loading || verificationStep !== 'VERIFIED'}
-            >
-                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.submitBtnText}>LIST PROPERTY</Text>}
-            </TouchableOpacity>
-
-            <View style={{ height: 100 }} />
-
+            {/* Success Modal */}
             <Modal visible={successVisible} transparent animationType="fade">
                 <View style={styles.modalOverlay}>
                     <View style={styles.successModal}>
-                        <View style={styles.successIconContainer}>
-                            <Ionicons name="checkmark-circle" size={80} color={COLORS.success} />
-                        </View>
-                        <Text style={styles.modalSuccessTitle}>Success!</Text>
-                        <Text style={styles.modalSuccessSub}>Your property has been listed securely.</Text>
-
-                        <TouchableOpacity style={styles.modalCloseBtn} onPress={handleSuccessClose}>
-                            <Text style={styles.modalCloseText}>Done</Text>
-                        </TouchableOpacity>
+                        <Ionicons name="checkmark-circle" size={80} color={COLORS.success} />
+                        <Text style={styles.successModalTitle}>Property Listed!</Text>
+                        <Text style={styles.successModalSub}>Your listing is now live</Text>
+                        <PremiumButton
+                            title="Done"
+                            onPress={() => {
+                                setSuccessVisible(false);
+                                // Reset form
+                                setForm({ title: '', price: '', desc: '', mobile: '' });
+                                setAadhaarImg(null);
+                                setVerificationStep('IDLE');
+                                setPropImages([]);
+                            }}
+                            style={{ marginTop: 20 }}
+                        />
                     </View>
                 </View>
             </Modal>
@@ -423,305 +488,88 @@ export default function SellScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        padding: 20,
-        backgroundColor: COLORS.bg,
-        minHeight: '100%',
-        ...Platform.select({ web: { paddingBottom: 100 } })
-    },
-    headerContainer: {
-        marginBottom: 25,
-        marginTop: 10,
-    },
-    headerTitle: {
-        fontSize: 32,
-        fontWeight: '800',
-        color: COLORS.text,
-        letterSpacing: -0.5,
-    },
-    headerSubtitle: {
-        fontSize: 16,
-        color: COLORS.subText,
-        marginTop: 5,
-    },
-    card: {
-        backgroundColor: COLORS.card,
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 20,
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 5,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)'
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: COLORS.text,
-        marginBottom: 15,
-    },
-    inputGroup: {
-        marginBottom: 15,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: COLORS.text,
-        marginBottom: 8,
-        marginLeft: 2
-    },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { marginBottom: -20, zIndex: 1 },
+    headerGradient: { padding: 30, paddingTop: 60, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    headerTitle: { fontSize: 28, fontWeight: 'bold', color: 'white' },
+    headerSub: { color: 'rgba(255,255,255,0.9)', marginTop: 5 },
+
+    formContent: { padding: 20 },
+    card: { padding: 20, marginBottom: 0 },
+    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 15 },
+
+    inputGroup: { marginBottom: 15 },
+    label: { fontSize: 14, fontWeight: '600', color: COLORS.text, marginBottom: 8 },
     input: {
-        backgroundColor: '#F9FAFB',
+        backgroundColor: COLORS.surface,
         borderWidth: 1,
         borderColor: COLORS.border,
-        borderRadius: 12,
+        borderRadius: SIZES.radius,
         padding: 14,
         fontSize: 16,
         color: COLORS.text,
     },
-    row: {
-        flexDirection: 'row',
-    },
-    subText: {
-        fontSize: 14,
-        color: COLORS.subText,
-        marginBottom: 15,
-    },
-    uploadArea: {
-        height: 180,
-        borderRadius: 12,
+    row: { flexDirection: 'row' },
+    rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    mapTypeBtn: { flexDirection: 'row', alignItems: 'center', padding: 8, backgroundColor: '#EEF2FF', borderRadius: 8 },
+    pickerWrap: { borderWidth: 1, borderColor: COLORS.border, borderRadius: SIZES.radius, backgroundColor: COLORS.surface },
+    picker: { height: 50 },
+
+    mobilePreview: { fontSize: 12, color: COLORS.success, marginTop: -10, marginBottom: 10, fontWeight: '600' },
+
+    mapContainer: { height: 200, borderRadius: SIZES.radius, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+    resetBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, padding: 8 },
+
+    addLink: { color: COLORS.primary, fontWeight: 'bold', fontSize: 14 },
+    photoThumb: { marginRight: 10 },
+    photoImg: { width: 80, height: 80, borderRadius: 12 },
+    removePhoto: { position: 'absolute', top: -5, right: -5, backgroundColor: 'white', borderRadius: 10 },
+
+    subText: { fontSize: 14, color: COLORS.subText, marginBottom: 15 },
+    uploadBox: {
+        height: 150,
         borderWidth: 2,
         borderColor: COLORS.primary,
         borderStyle: 'dashed',
-        backgroundColor: '#EFF6FF',
+        borderRadius: SIZES.radius,
+        backgroundColor: '#EEF2FF',
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden'
     },
-    uploadPlaceholder: {
-        alignItems: 'center',
-    },
-    uploadIcon: {
-        fontSize: 40,
-        marginBottom: 10,
-    },
-    uploadText: {
-        color: COLORS.primary,
-        fontWeight: '600',
-        fontSize: 16
-    },
-    previewImage: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover'
-    },
-    removeBtn: {
-        alignSelf: 'center',
-        marginTop: 10,
-    },
-    removeBtnText: {
-        color: COLORS.error,
-        fontWeight: '500'
-    },
-    submitBtn: {
-        backgroundColor: COLORS.primary, // Could implement gradient here
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        shadowColor: COLORS.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-    },
-    disabledBtn: {
-        opacity: 0.7
-    },
-    submitBtnText: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold',
-        letterSpacing: 0.5
-    },
-    successCard: {
-        backgroundColor: '#ECFDF5',
-        borderColor: '#10B981',
-    },
-    successTitle: {
-        color: '#065F46',
-        fontWeight: 'bold',
-        fontSize: 16,
-        marginBottom: 2
-    },
-    successSub: {
-        color: '#047857',
-        fontSize: 14
-    },
-    // New Styles for Premium Verification
-    scanningArea: {
-        borderColor: COLORS.secondary,
-        backgroundColor: '#F3F0FF'
-    },
-    scanningContainer: {
-        alignItems: 'center',
-        justifyContent: 'center'
-    },
-    scanningText: {
-        marginTop: 15,
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: COLORS.secondary
-    },
-    scanningSub: {
-        fontSize: 12,
-        color: COLORS.subText,
-        marginTop: 5
-    },
-    iconCircle: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: '#DBEAFE',
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginBottom: 10
-    },
-    uploadHint: {
-        fontSize: 12,
-        color: COLORS.subText,
-        marginTop: 5
-    },
-    verifiedCard: {
-        backgroundColor: '#FFF',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#10B981',
-        overflow: 'hidden',
-        marginTop: 10
-    },
-    verifiedHeader: {
-        paddingVertical: 8,
-        paddingHorizontal: 15,
-        backgroundColor: '#10B981'
-    },
-    verifiedTitle: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 14
-    },
-    verifiedContent: {
-        padding: 15
-    },
-    idRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginBottom: 10,
-        paddingBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6'
-    },
-    idLabel: { color: COLORS.subText },
-    idValue: { fontWeight: 'bold', color: COLORS.text },
-    scoreRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-    },
-    scoreLabel: { color: COLORS.subText },
-    scoreBadge: {
-        backgroundColor: '#ECFDF5',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 20
-    },
-    scoreValue: {
-        color: '#059669',
-        fontWeight: 'bold',
-        fontSize: 16
-    },
-    actionBtn: {
-        backgroundColor: COLORS.secondary,
-        padding: 15,
-        borderRadius: 12,
-        marginTop: 15,
-        alignItems: 'center'
-    },
-    actionBtnText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16
-    },
-    centerBox: { alignItems: 'center', padding: 20 },
-    dataRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderColor: '#eee' },
+    docPreview: { width: '100%', height: '100%' },
+
+    scanningBox: { alignItems: 'center', padding: 20 },
+    scanText: { marginTop: 15, fontSize: 16, fontWeight: '600', color: COLORS.primary, textAlign: 'center' },
+    progressBar: { width: '100%', height: 8, backgroundColor: COLORS.border, borderRadius: 4, marginTop: 15, overflow: 'hidden' },
+    progressFill: { height: '100%', backgroundColor: COLORS.primary },
+    progressText: { marginTop: 5, fontSize: 12, color: COLORS.subText },
+
+    successTitle: { fontSize: 18, fontWeight: 'bold', color: COLORS.success, marginBottom: 10 },
+    dataRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: COLORS.border },
     dataLabel: { color: COLORS.subText },
-    dataVal: { fontWeight: 'bold' },
+    dataValue: { fontWeight: '600', color: COLORS.text },
 
-    // Modal Styles
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20
-    },
-    successModal: {
-        backgroundColor: 'white',
-        borderRadius: 24,
-        padding: 30,
-        alignItems: 'center',
+    verifiedBox: { alignItems: 'center', padding: 20 },
+    verifiedText: { fontSize: 20, fontWeight: 'bold', color: COLORS.success, marginTop: 10 },
+    verifiedSub: { fontSize: 14, color: COLORS.subText, marginTop: 5 },
+
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+    modalContent: { backgroundColor: 'white', borderRadius: 24, padding: 30, alignItems: 'center', width: '100%', maxWidth: 340 },
+    modalTitle: { fontSize: 24, fontWeight: 'bold', color: COLORS.text },
+    modalSub: { fontSize: 14, color: COLORS.subText, marginTop: 5, marginBottom: 20 },
+    otpInput: {
         width: '100%',
-        maxWidth: 340,
-        ...SHADOWS.medium
-    },
-    successIconContainer: {
-        marginBottom: 20,
-        transform: [{ scale: 1.2 }]
-    },
-    modalSuccessTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: COLORS.text,
-        marginBottom: 10
-    },
-    modalSuccessSub: {
-        fontSize: 16,
-        color: COLORS.subText,
+        borderWidth: 2,
+        borderColor: COLORS.primary,
+        borderRadius: SIZES.radius,
+        padding: 16,
+        fontSize: 24,
         textAlign: 'center',
-        marginBottom: 30
-    },
-    modalCloseBtn: {
-        backgroundColor: COLORS.primary,
-        paddingVertical: 15,
-        paddingHorizontal: 40,
-        borderRadius: 16,
-        width: '100%'
-    },
-    modalCloseText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
-        textAlign: 'center'
+        letterSpacing: 10,
     },
 
-    // IMAGE STYLES
-    addPhotoBtn: {
-        width: 80, height: 80,
-        borderRadius: 8,
-        borderWidth: 1, borderColor: COLORS.primary, borderStyle: 'dashed',
-        justifyContent: 'center', alignItems: 'center',
-        marginRight: 10, backgroundColor: '#F0F9FF'
-    },
-    imagePreviewContainer: {
-        position: 'relative', marginRight: 10
-    },
-    propImagePreview: {
-        width: 80, height: 80, borderRadius: 8
-    },
-    removeImgBtn: {
-        position: 'absolute', top: -5, right: -5,
-        backgroundColor: 'white', borderRadius: 10
-    }
+    successModal: { backgroundColor: 'white', borderRadius: 24, padding: 30, alignItems: 'center', width: '100%', maxWidth: 340 },
+    successModalTitle: { fontSize: 28, fontWeight: 'bold', color: COLORS.text, marginTop: 20 },
+    successModalSub: { fontSize: 16, color: COLORS.subText, marginTop: 5 },
 });

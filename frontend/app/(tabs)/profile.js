@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Platform, TextInput } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '../components/LanguageContext';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
@@ -28,15 +29,38 @@ export default function ProfileScreen() {
     const [newPass, setNewPass] = useState('');
     const [confirmPass, setConfirmPass] = useState('');
 
+    // Load profile pic from AsyncStorage on mount
+    useEffect(() => {
+        loadProfilePic();
+    }, []);
+
+    const loadProfilePic = async () => {
+        try {
+            const savedAvatar = await AsyncStorage.getItem('@profile_avatar');
+            if (savedAvatar) {
+                setAvatar(savedAvatar);
+            }
+        } catch (e) {
+            console.log('Error loading avatar:', e);
+        }
+    };
+
     const pickProfilePic = async () => {
         let result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: [1, 1],
+            // Removed aspect ratio - user can crop freely
             quality: 0.8,
         });
         if (!result.canceled) {
-            setAvatar(result.assets[0].uri);
+            const uri = result.assets[0].uri;
+            setAvatar(uri);
+            // Save to AsyncStorage
+            try {
+                await AsyncStorage.setItem('@profile_avatar', uri);
+            } catch (e) {
+                console.log('Error saving avatar:', e);
+            }
         }
     };
 

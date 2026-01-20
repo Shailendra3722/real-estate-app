@@ -1,10 +1,10 @@
-import React, { useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert } from 'react-native';
+import React, { useContext, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert, Animated } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useLanguage } from './components/LanguageContext';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen({ onLogin }) {
-    // Safely use context, or fallback if context fails (debugging safety)
     const context = useLanguage();
     const t = context?.t || ((k) => k);
     const setLang = context?.setLang || (() => { });
@@ -12,12 +12,56 @@ export default function LoginScreen({ onLogin }) {
 
     const [debugMsg, setDebugMsg] = React.useState("");
 
+    // Animation refs
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(30)).current;
+    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const pulseAnim = useRef(new Animated.Value(1)).current;
+
+    useEffect(() => {
+        // Entrance animations
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                tension: 50,
+                friction: 7,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                tension: 50,
+                friction: 7,
+                useNativeDriver: true,
+            })
+        ]).start();
+
+        // Pulsing animation for button
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, {
+                    toValue: 1.05,
+                    duration: 2000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(pulseAnim, {
+                    toValue: 1,
+                    duration: 2000,
+                    useNativeDriver: true,
+                })
+            ])
+        ).start();
+    }, []);
+
     const handleLogin = () => {
         setDebugMsg("Attempting Login...");
-        // If we are passed a prop (from App.js manual nav), use it
         if (onLogin) {
             console.log("Login Clicked -> Navigating");
-            setTimeout(() => onLogin(), 100); // Small delay to let UI update
+            setTimeout(() => onLogin(), 100);
         } else {
             setDebugMsg("Error: onLogin prop missing!");
             console.error("onLogin prop is missing!");
@@ -26,60 +70,117 @@ export default function LoginScreen({ onLogin }) {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar style="auto" />
-            <View style={styles.header}>
+        <LinearGradient
+            colors={['#667eea', '#764ba2']}
+            style={styles.container}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+        >
+            <StatusBar style="light" />
+            <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
                 <Text style={styles.title}>MapProperties AI</Text>
-            </View>
+            </Animated.View>
 
-            <View style={styles.content}>
-                <Text style={styles.welcome}>{t('LOGIN_TITLE')}</Text>
+            <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+                <Animated.Text style={[styles.welcome, { transform: [{ translateY: slideAnim }] }]}>
+                    {t('LOGIN_TITLE')}
+                </Animated.Text>
 
-                <TouchableOpacity style={styles.loginBtn} onPress={handleLogin}>
-                    <Text style={styles.btnText}>{t('LOGIN_BTN')}</Text>
-                </TouchableOpacity>
+                <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+                    <TouchableOpacity
+                        style={styles.loginBtn}
+                        onPress={handleLogin}
+                        activeOpacity={0.9}
+                    >
+                        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
+                            <Text style={styles.btnText}>{t('LOGIN_BTN')}</Text>
+                        </Animated.View>
+                    </TouchableOpacity>
+                </Animated.View>
 
-                {debugMsg ? <Text style={{ color: 'red', textAlign: 'center', marginBottom: 10 }}>{debugMsg}</Text> : null}
+                {debugMsg ? <Text style={{ color: 'white', textAlign: 'center', marginTop: 10 }}>{debugMsg}</Text> : null}
 
-                <TouchableOpacity
-                    style={styles.langBtn}
-                    onPress={() => setLang(lang === 'HI' ? 'EN' : 'HI')}
-                >
-                    <Text style={styles.langText}>
-                        Change Language to {lang === 'HI' ? 'English' : 'हिंदी'}
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+                <Animated.View style={{ opacity: fadeAnim, marginTop: 32 }}>
+                    <TouchableOpacity
+                        style={styles.langBtn}
+                        onPress={() => setLang(lang === 'HI' ? 'EN' : 'HI')}
+                        activeOpacity={0.8}
+                    >
+                        <Text style={styles.langText}>
+                            Change Language to {lang === 'HI' ? 'English' : 'हिंदी'}
+                        </Text>
+                    </TouchableOpacity>
+                </Animated.View>
+            </Animated.View>
+        </LinearGradient>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
-        justifyContent: 'center',
-        // Web compatibility fix for full height
-        ...Platform.select({
-            web: { height: '100vh' }
-        })
     },
-    header: { alignItems: 'center', marginBottom: 50 },
-    title: { fontSize: 32, fontWeight: 'bold', color: '#2c3e50' },
-    content: { padding: 20 },
-    welcome: { fontSize: 24, textAlign: 'center', marginBottom: 30, color: '#34495e' },
-    loginBtn: {
-        backgroundColor: '#e74c3c',
-        padding: 15,
-        borderRadius: 10,
+    header: {
+        paddingTop: Platform.OS === 'web' ? 60 : 80,
+        paddingBottom: 40,
         alignItems: 'center',
-        marginBottom: 20,
-        // Web pointer cursor
-        ...Platform.select({
-            web: { cursor: 'pointer' }
-        })
     },
-    btnText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-    langBtn: { alignItems: 'center', padding: 10 },
-    langText: { color: '#7f8c8d' }
+    title: {
+        fontSize: 36,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+        letterSpacing: -0.5,
+    },
+    content: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 30,
+    },
+    welcome: {
+        fontSize: 24,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        marginBottom: 40,
+        textAlign: 'center',
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 3,
+    },
+    loginBtn: {
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 18,
+        paddingHorizontal: 60,
+        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 10,
+        minWidth: 280,
+    },
+    btnText: {
+        color: '#667eea',
+        fontSize: 18,
+        fontWeight: 'bold',
+        textAlign: 'center',
+        letterSpacing: 0.5,
+    },
+    langBtn: {
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.4)',
+    },
+    langText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        textAlign: 'center',
+        fontWeight: '500',
+    },
 });
