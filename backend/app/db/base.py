@@ -13,8 +13,13 @@ if DATABASE_URL.startswith("postgres://"):
 
 # Create engine based on database type
 if DATABASE_URL.startswith("postgresql://"):
-    # PostgreSQL - no connect_args needed
-    engine = create_engine(DATABASE_URL)
+    # PostgreSQL - Supabase requires SSL
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True, # Handles dropped connections
+        pool_size=5,
+        max_overflow=10
+    )
 else:
     # SQLite - needs check_same_thread
     engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
