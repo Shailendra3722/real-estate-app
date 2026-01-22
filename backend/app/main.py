@@ -38,6 +38,15 @@ app.include_router(favorites.router, prefix="/favorites", tags=["favorites"])
 def read_root():
     return {"message": "AI Real Estate Engine is Running", "status": "active"}
 
+from sqlalchemy import text
+from .db.base import get_db
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
 @app.get("/api/health")
-def health_check():
-    return {"status": "healthy", "services": {"database": "unknown", "verification_engine": "ready"}}
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "healthy", "services": {"database": "connected", "verification_engine": "ready"}}
+    except Exception as e:
+        return {"status": "unhealthy", "services": {"database": str(e), "verification_engine": "ready"}}
