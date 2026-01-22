@@ -1,6 +1,5 @@
 {
-    "framework": "expo",
-    "buildCommand": "expo export --platform web",
+    "buildCommand": "npm run build:web",
     "outputDirectory": "dist",
     "rewrites": [
         {
