@@ -47,6 +47,7 @@ from sqlalchemy.orm import Session
 def health_check(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
+        print("Health check passed: DB Connected")
         return {"status": "healthy", "services": {"database": "connected", "verification_engine": "ready"}}
     except Exception as e:
         return {"status": "unhealthy", "services": {"database": str(e), "verification_engine": "ready"}}

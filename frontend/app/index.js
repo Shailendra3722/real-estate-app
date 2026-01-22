@@ -98,7 +98,7 @@ export default function LoginScreen() {
             <StatusBar style="light" />
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
                 <Animated.View style={[styles.header, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                    <Text style={styles.title}>MapProperties AI</Text>
+                    <Text style={styles.title}>Real Estate Wala Bhai</Text>
                     <Text style={styles.subtitle}>Find your dream home with AI</Text>
                 </Animated.View>
 
