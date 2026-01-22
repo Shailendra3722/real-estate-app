@@ -20,6 +20,7 @@ class User(Base):
     is_verified = Column(Boolean, default=False)
     aadhaar_hash = Column(String, nullable=True) # Hashed
     mobile = Column(String, nullable=True)
+    hashed_password = Column(String)
     
     properties = relationship("Property", back_populates="owner")
 

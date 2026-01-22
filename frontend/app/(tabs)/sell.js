@@ -16,17 +16,11 @@ import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { PremiumButton } from '../components/ui/PremiumButton';
 import { GlassCard } from '../components/ui/GlassCard';
 
-// Helper to get persistent ID
-const USER_ID_KEY = '@user_id_v1';
-const getUserId = async () => {
+const getToken = async () => {
     try {
-        let userId = await AsyncStorage.getItem(USER_ID_KEY);
-        if (!userId) {
-            userId = 'user_' + Math.random().toString(36).substr(2, 9);
-            await AsyncStorage.setItem(USER_ID_KEY, userId);
-        }
-        return userId + '@example.com';
-    } catch { return 'guest@example.com'; }
+        const token = await AsyncStorage.getItem('user_token');
+        return token;
+    } catch { return null; }
 };
 
 export default function SellScreen() {
@@ -211,11 +205,14 @@ export default function SellScreen() {
             type: 'image/jpeg',
         });
 
+        const token = await getToken();
+
         try {
             // Use the backend upload endpoint we configured
             const uploadRes = await API.post('/api/upload-image', formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
+                    'Authorization': `Bearer ${token}`
                 },
             });
             return uploadRes.data.url;
@@ -268,7 +265,16 @@ export default function SellScreen() {
             };
 
             // 3. Submit to Backend
-            await API.post('/properties/', propertyData);
+            const token = await getToken();
+            if (!token) {
+                Alert.alert("Error", "Please log in to list a property");
+                setLoading(false);
+                return;
+            }
+
+            await API.post('/properties/', propertyData, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
 
             setLoading(false);
             setSuccessVisible(true);

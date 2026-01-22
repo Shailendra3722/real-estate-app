@@ -86,20 +86,13 @@ class PropertyResponse(BaseModel):
     class Config:
         orm_mode = True
 
+from .auth import get_current_user # Import dependency
+
 @router.post("/", response_model=PropertyResponse)
-def create_property(prop: PropertyCreate, db: Session = Depends(get_db)):
-    # ... (existing code) ...
-    # Find or Create Owner
-    email = prop.user_email or "test@example.com"
-    user = db.query(User).filter(User.email == email).first()
-    if not user:
-        user = User(email=email, full_name="User", id=str(uuid.uuid4()))
-        db.add(user)
-        db.commit()
-    
+def create_property(prop: PropertyCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     db_prop = Property(
         id=str(uuid.uuid4()),
-        owner_id=user.id,
+        owner_id=current_user.id, # Link to real user
         title=prop.title,
         description=prop.description,
         property_type=prop.property_type,
@@ -116,15 +109,16 @@ def create_property(prop: PropertyCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_prop)
     
-    # Manually populate owner fields for response since we just created it
+    # Manually populate owner fields for response
     response_obj = db_prop
-    response_obj.owner_name = user.full_name
-    response_obj.owner_is_verified = user.is_verified
+    response_obj.owner_name = current_user.full_name
+    response_obj.owner_is_verified = current_user.is_verified
     
     # Defaults
     calculate_ai_insights(response_obj)
 
     return response_obj
+
 
 def calculate_ai_insights(prop: Property):
     # Mock AI Logic

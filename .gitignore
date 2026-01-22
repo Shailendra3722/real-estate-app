@@ -25,3 +25,5 @@ backend/.env
 *.p12
 *.key
 mobile-build/
+.vercel
+.env*.local

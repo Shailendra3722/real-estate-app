@@ -46,11 +46,18 @@ export default function ProfileScreen() {
     }, []);
 
     const setupUser = async () => {
-        const email = await getUserId();
-        setUserEmail(email);
-        setUserName(email.split('@')[0]);
-        loadProfilePic();
-        loadMyProperties(email);
+        try {
+            const userJson = await AsyncStorage.getItem('user_profile');
+            if (userJson) {
+                const user = JSON.parse(userJson);
+                setUserEmail(user.email);
+                setUserName(user.name);
+                loadMyProperties(user.email);
+            }
+            loadProfilePic();
+        } catch (e) {
+            console.log("Error loading profile", e);
+        }
     };
 
     const loadProfilePic = async () => {

@@ -1,44 +1,109 @@
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from google.oauth2 import id_token
-from google.auth.transport import requests
-from ...core.config import settings
+from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from pydantic import BaseModel, EmailStr
+from ...db.base import get_db
+from ...db.models import User
+from ...core.security import get_password_hash, verify_password, create_access_token, SECRET_KEY, ALGORITHM
+from jose import JWTError, jwt
+import uuid
 
 router = APIRouter()
 
-# Schema for incoming token
-class TokenRequest(BaseModel):
-    token: str
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
-# Schema for User Response
-class UserResponse(BaseModel):
+# Schemas
+class UserRegister(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
     user: dict
 
-@router.post("/google", response_model=UserResponse)
-async def verify_google_token(request: TokenRequest):
+# Dependency to get current user
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
-        # Verify the token with Google's public keys
-        # We specify CLOUDINARY_CLOUD_NAME just as a placeholder, strictly we should use Client IDs
-        # For simplicity in this "Universal" setup, we accept any valid Google token signed by Google
-        # In production, pass 'audience=[CLIENT_ID_1, CLIENT_ID_2...]' to verify_oauth2_token
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
         
-        idinfo = id_token.verify_oauth2_token(request.token, requests.Request())
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise credentials_exception
+    return user
 
-        # Extract useful info
-        user_info = {
-            "name": idinfo.get("name"),
-            "email": idinfo.get("email"),
-            "picture": idinfo.get("picture"),
-            "is_verified": idinfo.get("email_verified")
+@router.post("/register", response_model=Token)
+def register(user_in: UserRegister, db: Session = Depends(get_db)):
+    # Check if user exists
+    existing_user = db.query(User).filter(User.email == user_in.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Create new user
+    user = User(
+        id=str(uuid.uuid4()),
+        email=user_in.email,
+        hashed_password=get_password_hash(user_in.password),
+        full_name=user_in.full_name,
+        is_verified=False
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    
+    # Create Token
+    access_token = create_access_token(data={"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "email": user.email,
+            "name": user.full_name,
+            "id": user.id
         }
+    }
 
-        # Here you would typically check if user exists in DB, create if not
-        # For our MVP, we return the info to allow frontend persistence
+@router.post("/login", response_model=Token)
+def login(user_in: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_in.email).first()
+    if not user or not user.hashed_password:
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
         
-        return {"user": user_info}
-
-    except ValueError as e:
-        # Invalid token
-        raise HTTPException(status_code=401, detail=f"Invalid Token: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    if not verify_password(user_in.password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect email or password")
+    
+    access_token = create_access_token(data={"sub": user.email})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "email": user.email,
+            "name": user.full_name,
+            "id": user.id
+        }
+    }
+    
+@router.get("/me")
+def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "email": current_user.email,
+        "name": current_user.full_name,
+        "id": current_user.id
+    }
