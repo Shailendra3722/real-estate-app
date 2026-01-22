@@ -48,9 +48,27 @@ from sqlalchemy.orm import Session
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
+    from .db.base import db_startup_error, engine
+    
+    status = "healthy"
+    db_status = "connected"
+    
+    if db_startup_error:
+        status = "degraded"
+        db_status = f"fallback_active_error_{db_startup_error}"
+    
     try:
+        # Check actual connection
         db.execute(text("SELECT 1"))
-        print("Health check passed: DB Connected")
-        return {"status": "healthy", "services": {"database": "connected", "verification_engine": "ready"}}
     except Exception as e:
-        return {"status": "unhealthy", "services": {"database": str(e), "verification_engine": "ready"}}
+        status = "unhealthy"
+        db_status = f"disconnected_{e}"
+
+    return {
+        "status": status, 
+        "services": {
+            "database": db_status, 
+            "verification_engine": "ready",
+            "backend_version": "v2_safe_mode"
+        }
+    }
