@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, TextInput, S
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import API from '../services/apiConfig';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { GlassCard } from '../components/ui/GlassCard';
@@ -106,56 +108,60 @@ export default function BuyScreen() {
         };
 
         return (
-            <TouchableOpacity
-                style={viewMode === 'grid' ? styles.gridCard : styles.listCard}
-                onPress={() => router.push(`/property/${item.id}`)}
-                activeOpacity={0.7}
+            <Animated.View
+                entering={FadeInDown.delay(100).duration(600).springify()}
             >
-                <View style={{ position: 'relative' }}>
-                    <Image
-                        source={{ uri: item.image_urls?.[0] || 'https://via.placeholder.com/300x200' }}
-                        style={viewMode === 'grid' ? styles.gridImage : styles.listImage}
-                    />
-                    {/* Gradient overlay for better badge visibility */}
-                    <View style={styles.imageOverlay} />
-
-                    {/* Verified Badge */}
-                    {item.owner_is_verified && (
-                        <View style={styles.verifiedBadge}>
-                            <Ionicons name="checkmark-circle" size={12} color="white" />
-                            <Text style={styles.verifiedText}>Verified</Text>
-                        </View>
-                    )}
-
-                    {/* Favorite Icon - Top Right */}
-                    <TouchableOpacity
-                        style={styles.favoriteIcon}
-                        onPress={toggleFavorite}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons
-                            name={isFavorite ? "heart" : "heart-outline"}
-                            size={22}
-                            color={isFavorite ? "#EF4444" : "white"}
+                <TouchableOpacity
+                    style={viewMode === 'grid' ? styles.gridCard : styles.listCard}
+                    onPress={() => router.push(`/property/${item.id}`)}
+                    activeOpacity={0.7}
+                >
+                    <View style={{ position: 'relative' }}>
+                        <Image
+                            source={{ uri: item.image_urls?.[0] || 'https://via.placeholder.com/300x200' }}
+                            style={viewMode === 'grid' ? styles.gridImage : styles.listImage}
                         />
-                    </TouchableOpacity>
-                </View>
-                <View style={styles.cardContent}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>{item.title || 'Property'}</Text>
-                    <Text style={styles.cardPrice}>₹{(item.price_fiat || 0).toLocaleString()}</Text>
-                    <View style={styles.cardMeta}>
-                        <Ionicons name="location-outline" size={14} color={COLORS.subText} />
-                        <Text style={styles.cardMetaText}>
-                            {item.latitude?.toFixed(4)}, {item.longitude?.toFixed(4)}
-                        </Text>
+                        {/* Gradient overlay for better badge visibility */}
+                        <View style={styles.imageOverlay} />
+
+                        {/* Verified Badge */}
+                        {item.owner_is_verified && (
+                            <View style={styles.verifiedBadge}>
+                                <Ionicons name="checkmark-circle" size={12} color="white" />
+                                <Text style={styles.verifiedText}>Verified</Text>
+                            </View>
+                        )}
+
+                        {/* Favorite Icon - Top Right */}
+                        <TouchableOpacity
+                            style={styles.favoriteIcon}
+                            onPress={toggleFavorite}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons
+                                name={isFavorite ? "heart" : "heart-outline"}
+                                size={22}
+                                color={isFavorite ? "#EF4444" : "white"}
+                            />
+                        </TouchableOpacity>
                     </View>
-                    {item.area && (
-                        <Text style={styles.cardArea}>
-                            {item.area} {item.area_unit === 'sqft' ? 'sq.ft' : item.area_unit}
-                        </Text>
-                    )}
-                </View>
-            </TouchableOpacity>
+                    <View style={styles.cardContent}>
+                        <Text style={styles.cardTitle} numberOfLines={1}>{item.title || 'Property'}</Text>
+                        <Text style={styles.cardPrice}>₹{(item.price_fiat || 0).toLocaleString()}</Text>
+                        <View style={styles.cardMeta}>
+                            <MaterialCommunityIcons name="map-marker" size={16} color={COLORS.secondary} />
+                            <Text style={styles.cardMetaText}>
+                                {item.latitude?.toFixed(4)}, {item.longitude?.toFixed(4)}
+                            </Text>
+                        </View>
+                        {item.area && (
+                            <Text style={styles.cardArea}>
+                                {item.area} {item.area_unit === 'sqft' ? 'sq.ft' : item.area_unit}
+                            </Text>
+                        )}
+                    </View>
+                </TouchableOpacity>
+            </Animated.View>
         );
     };
 
@@ -277,7 +283,8 @@ export default function BuyScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    header: { paddingTop: 60, paddingBottom: 30, paddingHorizontal: 20 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
     headerTitle: { fontSize: 28, fontWeight: 'bold', color: 'white' },
     headerSub: { color: 'rgba(255,255,255,0.9)', marginTop: 5 },
 
@@ -319,10 +326,10 @@ const styles = StyleSheet.create({
         color: COLORS.primary,
     },
 
-    filterScroll: { paddingHorizontal: 15, marginBottom: 15 },
+    filterScroll: { paddingHorizontal: 15, marginBottom: 10 },
     filterChip: {
-        paddingHorizontal: 20,
-        paddingVertical: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
         marginRight: 10,
         borderRadius: 20,
         backgroundColor: COLORS.surface,
