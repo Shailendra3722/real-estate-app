@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from .db import models
 from .db.base import engine
 
-models.Base.metadata.create_all(bind=engine)
+try:
+    models.Base.metadata.create_all(bind=engine)
+except Exception as e:
+    print(f"Startup DB Error: {e}")
 from .api.endpoints import auth
 
 app = FastAPI(

@@ -16,6 +16,7 @@ if DATABASE_URL.startswith("postgresql://"):
     # PostgreSQL - Supabase requires SSL
     engine = create_engine(
         DATABASE_URL,
+        connect_args={"sslmode": "require"},
         pool_pre_ping=True, # Handles dropped connections
         pool_size=5,
         max_overflow=10
