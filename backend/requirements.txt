@@ -14,5 +14,4 @@ python-jose[cryptography]
 passlib[bcrypt]
 cloudinary
 google-auth-library
-email-validator
-dnspython
+
