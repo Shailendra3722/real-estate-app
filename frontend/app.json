@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Real Estate Wala Bhai",
+    "slug": "real-estate-wala-bhai",
     "version": "1.0.0",
+    "scheme": "real-estate-wala-bhai",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,21 +14,35 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.shailendrasinghrajput.realestatewalabhai",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.shailendrasinghrajput.realestatewalabhai"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       "expo-secure-store",
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "e669ce69-21f9-4b18-a3fc-26dfe16301f9"
+      }
+    },
+    "owner": "shailendrasinghrajput"
   }
 }

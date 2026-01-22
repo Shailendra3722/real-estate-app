@@ -1,10 +1,11 @@
-import React, { useContext, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Alert, Animated } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { useRouter } from 'expo-router';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Animated, StatusBar } from 'react-native';
 import { useLanguage } from './components/LanguageContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
-export default function LoginScreen({ onLogin }) {
+export default function LoginScreen() {
+    const router = useRouter();
     const context = useLanguage();
     const t = context?.t || ((k) => k);
     const setLang = context?.setLang || (() => { });
@@ -59,14 +60,11 @@ export default function LoginScreen({ onLogin }) {
 
     const handleLogin = () => {
         setDebugMsg("Attempting Login...");
-        if (onLogin) {
-            console.log("Login Clicked -> Navigating");
-            setTimeout(() => onLogin(), 100);
-        } else {
-            setDebugMsg("Error: onLogin prop missing!");
-            console.error("onLogin prop is missing!");
-            Alert.alert("Error", "Navigation failed. Please refresh.");
-        }
+        console.log("Login Clicked -> Navigating");
+        setTimeout(() => {
+            // Updated to route to the tabs layout properly
+            router.replace('/(tabs)/map');
+        }, 100);
     };
 
     return (
@@ -116,7 +114,7 @@ export default function LoginScreen({ onLogin }) {
     );
 }
 
-const styles = StyleSheet.create({
+const styles = {
     container: {
         flex: 1,
     },
@@ -183,4 +181,4 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         fontWeight: '500',
     },
-});
+};

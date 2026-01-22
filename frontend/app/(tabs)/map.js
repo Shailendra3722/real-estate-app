@@ -9,20 +9,22 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../constants/theme';
 
+import API from '../services/apiConfig';
+
 export default function MapScreen() {
     const { t } = useLanguage();
 
     // 1. ROBUST INITIAL STATE (Uttar Pradesh Default)
     // We initialize EVERYTHING to avoid "null" crashes on first render
-    const [location, setLocation] = useState({ coords: { latitude: 26.8467, longitude: 80.9461 } });
-    const [region, setRegion] = useState({
-        latitude: 26.8467,
-        longitude: 80.9461,
-        latitudeDelta: 2.0, // Zoomed out to see UP
-        longitudeDelta: 2.0,
-    });
-
     const [properties, setProperties] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [region, setRegion] = useState({
+        latitude: 28.4595,
+        longitude: 77.0266,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
+    });
+    const [arMode, setArMode] = useState(false);
     const [selectedProp, setSelectedProp] = useState(null);
     const [searchVisible, setSearchVisible] = useState(false);
     const [mapType, setMapType] = useState('standard');
@@ -46,15 +48,9 @@ export default function MapScreen() {
         "Sadar": ["Village A", "Village B"]
     };
 
-    // 3. LOAD PROPERTIES (Mock Data for stability)
+    // 3. LOAD PROPERTIES (Real Data)
     useEffect(() => {
-        // Load some mock properties near Azamgarh/UP immediately
-        const mockProps = [
-            { id: 1, latitude: 26.0680, longitude: 83.1840, price_fiat: "45 Lakh", title: "3BHK Villa in Azamgarh", description: "Near Mehnagar", status: "APPROVED" },
-            { id: 2, latitude: 26.8467, longitude: 80.9461, price_fiat: "80 Lakh", title: "Plot in Lucknow", description: "Gomti Nagar", status: "APPROVED" },
-            { id: 3, latitude: 26.0700, longitude: 83.1900, price_fiat: "20 Lakh", title: "Farmland in Karauti", description: "Agricultural Land", status: "APPROVED" },
-        ];
-        setProperties(mockProps);
+        fetchProperties();
 
         // Attempt to get real location in background, but don't block
         (async () => {
@@ -70,6 +66,15 @@ export default function MapScreen() {
             }
         })();
     }, []);
+
+    const fetchProperties = async () => {
+        try {
+            const response = await API.get('/properties/all');
+            setProperties(response.data || []);
+        } catch (error) {
+            console.error('Error fetching properties for map:', error);
+        }
+    };
 
     const handleSearchSubmit = () => {
         setSearchVisible(false);
@@ -304,6 +309,34 @@ const styles = StyleSheet.create({
     modalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, textAlign: 'center' },
     pickerLabel: { marginTop: 10, color: COLORS.subText, fontSize: 12, fontWeight: '600' },
     pickerWrap: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginTop: 5, backgroundColor: '#F9FAFB' },
+    markerArrow: {
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        borderTopColor: COLORS.primary,
+        borderWidth: 6,
+        alignSelf: 'center',
+        marginTop: -0.5,
+    },
+    markerContainer: {
+        alignItems: 'center',
+    },
+
+    // AR Styles
+    arContainer: { flex: 1, backgroundColor: 'black' },
+    cameraView: { flex: 1, backgroundColor: '#222' }, // Simulation
+    arCard: { position: 'absolute', backgroundColor: 'rgba(255,255,255,0.9)', padding: 10, borderRadius: 8, width: 120 },
+    arPrice: { fontWeight: 'bold', color: COLORS.primary },
+    arTitle: { fontSize: 10, color: 'black' },
+    arLine: { height: 50, width: 1, backgroundColor: 'white', position: 'absolute', bottom: -50, left: 60 },
+    arDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'white', position: 'absolute', bottom: -60, left: 55 },
+
+    arToggleBtn: {
+        position: 'absolute', bottom: 100, alignSelf: 'center',
+        backgroundColor: 'rgba(0,0,0,0.7)', flexDirection: 'row', alignItems: 'center', gap: 8,
+        paddingHorizontal: 20, paddingVertical: 12, borderRadius: 30,
+        borderWidth: 1, borderColor: 'white'
+    },
+    arBtnText: { color: 'white', fontWeight: 'bold' },
     searchSubmitBtn: { backgroundColor: COLORS.primary, padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 25 },
     searchSubmitText: { color: 'white', fontWeight: 'bold' },
     closeBtn: { alignSelf: 'center', marginTop: 15, padding: 10 }

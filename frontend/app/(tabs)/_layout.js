@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '../constants/theme';
 import { useLanguage } from '../components/LanguageContext';
 
@@ -32,29 +32,29 @@ export default function TabLayout() {
                 name="home"
                 options={{
                     title: 'Home',
-                    tabBarIcon: ({ color }) => <Ionicons name="home" size={24} color={color} />,
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons name="home-city" size={26} color={color} />,
                 }}
             />
             <Tabs.Screen
-                name="map"
+                name="buy"
                 options={{
                     title: 'Buy',
-                    tabBarIcon: ({ color }) => <Ionicons name="search" size={24} color={color} />,
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons name="home-search" size={26} color={color} />,
                 }}
             />
             <Tabs.Screen
                 name="sell"
                 options={{
                     title: 'Sell',
-                    tabBarIcon: ({ color }) => <Ionicons name="add-circle" size={40} color={COLORS.secondary} style={{ marginTop: -10 }} />,
-                    tabBarLabelStyle: { display: 'none' } // Highlight icon only? Or keep label. Let's keep label for clarity but style it.
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons name="home-plus" size={42} color={COLORS.secondary} style={{ marginTop: -10 }} />,
+                    tabBarLabelStyle: { display: 'none' }
                 }}
             />
             <Tabs.Screen
                 name="profile"
                 options={{
                     title: 'Profile',
-                    tabBarIcon: ({ color }) => <Ionicons name="person" size={24} color={color} />,
+                    tabBarIcon: ({ color }) => <MaterialCommunityIcons name="account-circle" size={26} color={color} />,
                 }}
             />
         </Tabs>

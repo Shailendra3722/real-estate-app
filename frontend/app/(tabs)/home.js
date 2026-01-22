@@ -1,31 +1,63 @@
-import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Dimensions, ScrollView, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Dimensions, ScrollView, Platform, Image, ActivityIndicator, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../constants/theme';
 import { useLanguage } from '../components/LanguageContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import API from '../services/apiConfig';
+import React, { useState, useEffect, useRef } from 'react';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
     const router = useRouter();
     const { t } = useLanguage();
-    const [userImage, setUserImage] = React.useState(null);
+    const [userImage, setUserImage] = useState(null);
+    const [recentProperties, setRecentProperties] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    React.useEffect(() => {
-        // Try to load user image from storage
-        const loadUser = async () => {
-            try {
-                const profile = await AsyncStorage.getItem('user_profile');
-                if (profile) {
-                    const p = JSON.parse(profile);
-                    if (p.picture) setUserImage(p.picture);
-                }
-            } catch (e) { console.log(e); }
-        };
-        loadUser();
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(50)).current;
+
+    useEffect(() => {
+        loadData();
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                tension: 20,
+                friction: 7,
+                useNativeDriver: true,
+            })
+        ]).start();
     }, []);
+
+    const loadData = async () => {
+        try {
+            // Load User Profile
+            const profile = await AsyncStorage.getItem('user_profile');
+            if (profile) {
+                const p = JSON.parse(profile);
+                if (p.picture) setUserImage(p.picture);
+            }
+
+            // Load Recent Properties
+            const response = await API.get('/properties/all');
+            // Show last 5 properties, reversed to show newest first
+            if (response.data) {
+                setRecentProperties(response.data.reverse().slice(0, 5));
+            }
+        } catch (e) {
+            console.log("Error loading home data:", e);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const navigateTo = (route) => {
         router.push(route);
@@ -33,116 +65,135 @@ export default function HomeScreen() {
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-            {/* Header Section */}
-            <View style={styles.header}>
-                <View>
-                    <Text style={styles.greeting}>Welcome Back</Text>
-                    <Text style={styles.username}>Real Estate Pro</Text>
-                </View>
-                <TouchableOpacity style={styles.profileBtn} onPress={() => navigateTo('/(tabs)/profile')}>
-                    {userImage ? (
-                        <Image source={{ uri: userImage }} style={{ width: 45, height: 45, borderRadius: 25 }} />
-                    ) : (
-                        <Ionicons name="person-circle-outline" size={40} color={COLORS.primary} />
-                    )}
-                </TouchableOpacity>
-            </View>
-
-            {/* Hero Section - The "Super Cards" */}
-            <View style={styles.actionContainer}>
-                {/* BUY CARD */}
-                <TouchableOpacity
-                    style={[styles.card, SHADOWS.medium]}
-                    activeOpacity={0.9}
-                    onPress={() => navigateTo('/(tabs)/map')} // Keeping 'map' route for now, UI says Buy
-                >
-                    <LinearGradient
-                        colors={['#0F172A', '#1E293B']}
-                        style={styles.cardGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                    >
-                        <View style={styles.cardContent}>
-                            <View style={styles.iconContainer}>
-                                <Ionicons name="search" size={32} color="#FBBF24" />
-                            </View>
-                            <View>
-                                <Text style={styles.cardTitle}>Find Property</Text>
-                                <Text style={styles.cardSub}>Browse 10,000+ Listings</Text>
-                            </View>
-                        </View>
-                        <View style={styles.cardArrow}>
-                            <Ionicons name="arrow-forward" size={24} color="white" />
-                        </View>
-                    </LinearGradient>
-                </TouchableOpacity>
-
-                {/* SELL CARD */}
-                <TouchableOpacity
-                    style={[styles.card, SHADOWS.medium]}
-                    activeOpacity={0.9}
-                    onPress={() => navigateTo('/(tabs)/sell')}
-                >
-                    <LinearGradient
-                        colors={['#D97706', '#B45309']}
-                        style={styles.cardGradient}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                    >
-                        <View style={styles.cardContent}>
-                            <View style={[styles.iconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-                                <Ionicons name="add-circle" size={32} color="white" />
-                            </View>
-                            <View>
-                                <Text style={styles.cardTitle}>List Property</Text>
-                                <Text style={styles.cardSub}>Verified Sellers Only</Text>
-                            </View>
-                        </View>
-                        <View style={styles.cardArrow}>
-                            <Ionicons name="arrow-forward" size={24} color="white" />
-                        </View>
-                    </LinearGradient>
-                </TouchableOpacity>
-            </View>
-
-            {/* Quick Stats / Highlights */}
-            <View style={styles.statsContainer}>
-                <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>12k+</Text>
-                    <Text style={styles.statLabel}>Active Users</Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>8.5k</Text>
-                    <Text style={styles.statLabel}>Properties</Text>
-                </View>
-                <View style={styles.divider} />
-                <View style={styles.statItem}>
-                    <Text style={styles.statNumber}>4.9</Text>
-                    <Text style={styles.statLabel}>Trust Score</Text>
-                </View>
-            </View>
-
-            {/* Recent Activity / Featured (Placeholder for Pro Look) */}
-            <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Featured Collections</Text>
-                <TouchableOpacity>
-                    <Text style={styles.seeAll}>See All</Text>
-                </TouchableOpacity>
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.collectionsScroll}>
-                {['Luxury Villas', 'Budget Flats', 'Farm Lands'].map((item, idx) => (
-                    <TouchableOpacity key={idx} style={styles.collectionCard}>
-                        {/* Placeholder gradient as image */}
-                        <LinearGradient colors={['#eee', '#ddd']} style={styles.collectionImg}>
-                            <Ionicons name="image-outline" size={30} color="#999" />
-                        </LinearGradient>
-                        <Text style={styles.collectionTitle}>{item}</Text>
+            <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+                {/* Header Section */}
+                <View style={styles.header}>
+                    <View>
+                        <Text style={styles.greeting}>Real Estate Wala Bhai 🤝</Text>
+                        <Text style={styles.username}>Find your dream home</Text>
+                    </View>
+                    <TouchableOpacity style={styles.profileBtn} onPress={() => navigateTo('/(tabs)/profile')}>
+                        {userImage ? (
+                            <Image source={{ uri: userImage }} style={{ width: 45, height: 45, borderRadius: 25 }} />
+                        ) : (
+                            <Ionicons name="person-circle-outline" size={40} color={COLORS.primary} />
+                        )}
                     </TouchableOpacity>
-                ))}
-            </ScrollView>
+                </View>
 
+                {/* Hero Section - The "Super Cards" */}
+                <View style={styles.actionContainer}>
+                    {/* BUY CARD */}
+                    <TouchableOpacity
+                        style={[styles.card, SHADOWS.medium]}
+                        activeOpacity={0.9}
+                        onPress={() => navigateTo('/(tabs)/buy')}
+                    >
+                        <LinearGradient
+                            colors={['#0F172A', '#1E293B']}
+                            style={styles.cardGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            <View style={styles.cardContent}>
+                                <View style={styles.iconContainer}>
+                                    <Ionicons name="search" size={32} color="#FBBF24" />
+                                </View>
+                                <View>
+                                    <Text style={styles.cardTitle}>Find Property</Text>
+                                    <Text style={styles.cardSub}>Browse Listings</Text>
+                                </View>
+                            </View>
+                            <View style={styles.cardArrow}>
+                                <Ionicons name="arrow-forward" size={24} color="white" />
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+
+                    {/* SELL CARD */}
+                    <TouchableOpacity
+                        style={[styles.card, SHADOWS.medium]}
+                        activeOpacity={0.9}
+                        onPress={() => navigateTo('/(tabs)/sell')}
+                    >
+                        <LinearGradient
+                            colors={['#D97706', '#B45309']}
+                            style={styles.cardGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                        >
+                            <View style={styles.cardContent}>
+                                <View style={[styles.iconContainer, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                    <Ionicons name="add-circle" size={32} color="white" />
+                                </View>
+                                <View>
+                                    <Text style={styles.cardTitle}>List Property</Text>
+                                    <Text style={styles.cardSub}>Verified Sellers Only</Text>
+                                </View>
+                            </View>
+                            <View style={styles.cardArrow}>
+                                <Ionicons name="arrow-forward" size={24} color="white" />
+                            </View>
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </View>
+
+                {/* Quick Stats */}
+                <View style={styles.statsContainer}>
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>{recentProperties.length > 0 ? recentProperties.length + '+' : '12k+'}</Text>
+                        <Text style={styles.statLabel}>Active Listings</Text>
+                    </View>
+                    <View style={styles.divider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>850+</Text>
+                        <Text style={styles.statLabel}>Verified Sellers</Text>
+                    </View>
+                    <View style={styles.divider} />
+                    <View style={styles.statItem}>
+                        <Text style={styles.statNumber}>4.9</Text>
+                        <Text style={styles.statLabel}>Trust Score</Text>
+                    </View>
+                </View>
+
+                {/* Recent Activity / Featured */}
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Recent Listings</Text>
+                    <TouchableOpacity onPress={() => navigateTo('/(tabs)/buy')}>
+                        <Text style={styles.seeAll}>See All</Text>
+                    </TouchableOpacity>
+                </View>
+
+                {loading ? (
+                    <ActivityIndicator size="large" color={COLORS.primary} style={{ marginTop: 20 }} />
+                ) : recentProperties.length === 0 ? (
+                    <Text style={{ textAlign: 'center', color: COLORS.subText, marginTop: 20 }}>No recent properties found.</Text>
+                ) : (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.collectionsScroll}>
+                        {recentProperties.map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                style={styles.collectionCard}
+                                onPress={() => router.push(`/property/${item.id}`)}
+                            >
+                                <Image
+                                    source={{ uri: item.image_urls?.[0] || 'https://via.placeholder.com/300x200' }}
+                                    style={styles.collectionImg}
+                                />
+                                <Text style={styles.collectionPrice}>₹{item.price_fiat?.toLocaleString()}</Text>
+                                <Text style={styles.collectionTitle} numberOfLines={1}>{item.title}</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                                    <Ionicons name="location-outline" size={12} color={COLORS.subText} />
+                                    <Text style={{ fontSize: 10, color: COLORS.subText }}>
+                                        {item.latitude.toFixed(2)}, {item.longitude.toFixed(2)}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                )}
+
+            </Animated.View>
         </ScrollView>
     );
 }
@@ -278,6 +329,14 @@ const styles = StyleSheet.create({
     collectionTitle: {
         fontWeight: '600',
         color: COLORS.text,
-        marginLeft: 2
+        marginLeft: 2,
+        fontSize: 14,
+    },
+    collectionPrice: {
+        fontSize: 14,
+        fontWeight: 'bold',
+        color: COLORS.primary,
+        marginLeft: 2,
+        marginTop: 4,
     }
 });

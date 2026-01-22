@@ -1,52 +1,44 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
-from ...db.base import get_db
-from ...db.models import User
+from google.oauth2 import id_token
+from google.auth.transport import requests
+from ...core.config import settings
 
 router = APIRouter()
 
-class GoogleLoginRequest(BaseModel):
-    token: str  # In production, this is the Google ID Token
+# Schema for incoming token
+class TokenRequest(BaseModel):
+    token: str
 
-class AuthResponse(BaseModel):
-    access_token: str
-    token_type: str
-    user_id: str
-    is_verified: bool
+# Schema for User Response
+class UserResponse(BaseModel):
+    user: dict
 
-@router.post("/google", response_model=AuthResponse)
-def google_login(request: GoogleLoginRequest, db: Session = Depends(get_db)):
-    """
-    Exchanges Google ID Token for App Session.
-    Current Mock Implementation:
-    - If token is 'test_user', logs in as Test User.
-    - Creates user if not exists.
-    """
-    # TODO: Validate Google Token
-    
-    # Mock Logic
-    dummy_email = "test@example.com"
-    user = db.query(User).filter(User.email == dummy_email).first()
-    
-    if not user:
-        user = User(email=dummy_email, full_name="Test User", is_verified=False)
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+@router.post("/google", response_model=UserResponse)
+async def verify_google_token(request: TokenRequest):
+    try:
+        # Verify the token with Google's public keys
+        # We specify CLOUDINARY_CLOUD_NAME just as a placeholder, strictly we should use Client IDs
+        # For simplicity in this "Universal" setup, we accept any valid Google token signed by Google
+        # In production, pass 'audience=[CLIENT_ID_1, CLIENT_ID_2...]' to verify_oauth2_token
         
-    return {
-        "access_token": "mock_jwt_token_" + user.id,
-        "token_type": "bearer",
-        "user_id": user.id,
-        "is_verified": user.is_verified
-    }
+        idinfo = id_token.verify_oauth2_token(request.token, requests.Request())
 
-@router.get("/me")
-def read_users_me(db: Session = Depends(get_db)):
-    # Mock: Return fixed user
-    dummy_email = "test@example.com"
-    user = db.query(User).filter(User.email == dummy_email).first()
-    if not user:
-         raise HTTPException(status_code=404, detail="User not found")
-    return {"id": user.id, "email": user.email, "is_verified": user.is_verified}
+        # Extract useful info
+        user_info = {
+            "name": idinfo.get("name"),
+            "email": idinfo.get("email"),
+            "picture": idinfo.get("picture"),
+            "is_verified": idinfo.get("email_verified")
+        }
+
+        # Here you would typically check if user exists in DB, create if not
+        # For our MVP, we return the info to allow frontend persistence
+        
+        return {"user": user_info}
+
+    except ValueError as e:
+        # Invalid token
+        raise HTTPException(status_code=401, detail=f"Invalid Token: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

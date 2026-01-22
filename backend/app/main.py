@@ -21,14 +21,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from .api.endpoints import properties, upload, favorites, auth
+
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
-from .api.endpoints import properties
 app.include_router(properties.router, prefix="/properties", tags=["properties"])
 
 from .api.endpoints import verification
 app.include_router(verification.router, prefix="/verification", tags=["verification"])
 
-from .api.endpoints import upload
 app.include_router(upload.router, prefix="/api", tags=["upload"])
 
 from .api.endpoints import favorites

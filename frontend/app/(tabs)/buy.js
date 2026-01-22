@@ -6,6 +6,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import API from '../services/apiConfig';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
 import { GlassCard } from '../components/ui/GlassCard';
+import { FavoriteService } from '../services/favoriteService';
+import RealEstateLoader from '../components/ui/RealEstateLoader';
 
 export default function BuyScreen() {
     const router = useRouter();
@@ -13,7 +15,7 @@ export default function BuyScreen() {
     const [filteredProperties, setFilteredProperties] = useState([]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
-    const [viewMode, setViewMode] = useState('grid'); // grid or list
+    const [viewMode, setViewMode] = useState('grid'); // grid, list, or map
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedType, setSelectedType] = useState('All');
 
@@ -62,33 +64,100 @@ export default function BuyScreen() {
         setFilteredProperties(filtered);
     };
 
-    const PropertyCard = ({ item }) => (
-        <TouchableOpacity
-            style={viewMode === 'grid' ? styles.gridCard : styles.listCard}
-            onPress={() => router.push(`/property/${item.id}`)}
-            activeOpacity={0.8}
-        >
-            <Image
-                source={{ uri: item.image_urls?.[0] || 'https://via.placeholder.com/300x200' }}
-                style={viewMode === 'grid' ? styles.gridImage : styles.listImage}
-            />
-            <View style={styles.cardContent}>
-                <Text style={styles.cardTitle} numberOfLines={1}>{item.title || 'Property'}</Text>
-                <Text style={styles.cardPrice}>₹{(item.price_fiat || 0).toLocaleString()}</Text>
-                <View style={styles.cardMeta}>
-                    <Ionicons name="location-outline" size={14} color={COLORS.subText} />
-                    <Text style={styles.cardMetaText}>
-                        {item.latitude?.toFixed(4)}, {item.longitude?.toFixed(4)}
-                    </Text>
+    const PropertyCard = ({ item }) => {
+        const [isFavorite, setIsFavorite] = useState(false);
+        const [isLoading, setIsLoading] = useState(false);
+
+        // Check favorite status on mount
+        useEffect(() => {
+            checkFavoriteStatus();
+        }, [item.id]);
+
+        const checkFavoriteStatus = async () => {
+            try {
+                const favStatus = await FavoriteService.isFavorite(item.id);
+                setIsFavorite(favStatus);
+            } catch (e) {
+                console.log('Error checking favorite:', e);
+            }
+        };
+
+        const toggleFavorite = async (e) => {
+            e.stopPropagation(); // Prevent navigation when tapping heart
+
+            if (isLoading) return;
+
+            setIsLoading(true);
+            const newStatus = !isFavorite;
+            setIsFavorite(newStatus); // Optimistic update
+
+            try {
+                if (newStatus) {
+                    await FavoriteService.addFavorite(item.id);
+                } else {
+                    await FavoriteService.removeFavorite(item.id);
+                }
+            } catch (e) {
+                console.log('Error toggling favorite:', e);
+                setIsFavorite(!newStatus); // Revert on error
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        return (
+            <TouchableOpacity
+                style={viewMode === 'grid' ? styles.gridCard : styles.listCard}
+                onPress={() => router.push(`/property/${item.id}`)}
+                activeOpacity={0.7}
+            >
+                <View style={{ position: 'relative' }}>
+                    <Image
+                        source={{ uri: item.image_urls?.[0] || 'https://via.placeholder.com/300x200' }}
+                        style={viewMode === 'grid' ? styles.gridImage : styles.listImage}
+                    />
+                    {/* Gradient overlay for better badge visibility */}
+                    <View style={styles.imageOverlay} />
+
+                    {/* Verified Badge */}
+                    {item.owner_is_verified && (
+                        <View style={styles.verifiedBadge}>
+                            <Ionicons name="checkmark-circle" size={12} color="white" />
+                            <Text style={styles.verifiedText}>Verified</Text>
+                        </View>
+                    )}
+
+                    {/* Favorite Icon - Top Right */}
+                    <TouchableOpacity
+                        style={styles.favoriteIcon}
+                        onPress={toggleFavorite}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons
+                            name={isFavorite ? "heart" : "heart-outline"}
+                            size={22}
+                            color={isFavorite ? "#EF4444" : "white"}
+                        />
+                    </TouchableOpacity>
                 </View>
-                {item.area && (
-                    <Text style={styles.cardArea}>
-                        {item.area} {item.area_unit === 'sqft' ? 'sq.ft' : item.area_unit}
-                    </Text>
-                )}
-            </View>
-        </TouchableOpacity>
-    );
+                <View style={styles.cardContent}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{item.title || 'Property'}</Text>
+                    <Text style={styles.cardPrice}>₹{(item.price_fiat || 0).toLocaleString()}</Text>
+                    <View style={styles.cardMeta}>
+                        <Ionicons name="location-outline" size={14} color={COLORS.subText} />
+                        <Text style={styles.cardMetaText}>
+                            {item.latitude?.toFixed(4)}, {item.longitude?.toFixed(4)}
+                        </Text>
+                    </View>
+                    {item.area && (
+                        <Text style={styles.cardArea}>
+                            {item.area} {item.area_unit === 'sqft' ? 'sq.ft' : item.area_unit}
+                        </Text>
+                    )}
+                </View>
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={styles.container}>
@@ -121,7 +190,31 @@ export default function BuyScreen() {
                     )}
                 </View>
 
-                {/* View Toggle */}
+            </View>
+
+            {/* View Toggle & Sort */}
+            <View style={styles.toggleContainer}>
+                <TouchableOpacity
+                    onPress={() => {
+                        const sorted = [...filteredProperties].sort((a, b) => (a.price_fiat || 0) - (b.price_fiat || 0));
+                        setFilteredProperties(sorted);
+                    }}
+                    style={styles.sortBtn}
+                >
+                    <Ionicons name="arrow-up" size={16} color={COLORS.primary} />
+                    <Text style={styles.sortText}>Price</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => {
+                        const sorted = [...filteredProperties].sort((a, b) => (b.price_fiat || 0) - (a.price_fiat || 0));
+                        setFilteredProperties(sorted);
+                    }}
+                    style={[styles.sortBtn, { marginRight: 'auto', marginLeft: 10 }]}
+                >
+                    <Ionicons name="arrow-down" size={16} color={COLORS.primary} />
+                    <Text style={styles.sortText}>Price</Text>
+                </TouchableOpacity>
+
                 <TouchableOpacity
                     onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
                     style={styles.viewToggle}
@@ -132,7 +225,14 @@ export default function BuyScreen() {
                         color={COLORS.primary}
                     />
                 </TouchableOpacity>
+                <TouchableOpacity
+                    onPress={() => router.push('/(tabs)/map')}
+                    style={[styles.viewToggle, { marginLeft: 10 }]}
+                >
+                    <Ionicons name="map-outline" size={24} color={COLORS.primary} />
+                </TouchableOpacity>
             </View>
+
 
             {/* Type Filters */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll}>
@@ -151,10 +251,7 @@ export default function BuyScreen() {
 
             {/* Properties List */}
             {loading ? (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loadingText}>Loading properties...</Text>
-                </View>
+                <RealEstateLoader />
             ) : filteredProperties.length === 0 ? (
                 <View style={styles.emptyContainer}>
                     <Ionicons name="home-outline" size={64} color={COLORS.subText} />
@@ -184,7 +281,8 @@ const styles = StyleSheet.create({
     headerTitle: { fontSize: 28, fontWeight: 'bold', color: 'white' },
     headerSub: { color: 'rgba(255,255,255,0.9)', marginTop: 5 },
 
-    searchSection: { flexDirection: 'row', padding: 15, gap: 10 },
+    searchSection: { flexDirection: 'row', padding: 15, gap: 10, alignItems: 'center' },
+    toggleContainer: { flexDirection: 'row', paddingHorizontal: 15, paddingBottom: 10, justifyContent: 'flex-end' },
     searchBar: {
         flex: 1,
         flexDirection: 'row',
@@ -205,6 +303,21 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         ...SHADOWS.small,
     },
+    sortBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: COLORS.surface,
+        paddingHorizontal: 12,
+        height: 40,
+        borderRadius: 20,
+        ...SHADOWS.small,
+    },
+    sortText: {
+        marginLeft: 4,
+        fontSize: 12,
+        fontWeight: '600',
+        color: COLORS.primary,
+    },
 
     filterScroll: { paddingHorizontal: 15, marginBottom: 15 },
     filterChip: {
@@ -223,28 +336,53 @@ const styles = StyleSheet.create({
     listContent: { padding: 15 },
     gridCard: {
         flex: 1,
-        margin: 5,
+        margin: 8,
         backgroundColor: COLORS.surface,
-        borderRadius: SIZES.radius,
+        borderRadius: 20, // Increased from 16
         overflow: 'hidden',
-        ...SHADOWS.light,
+        ...SHADOWS.small, // Reduced from light to small
     },
     listCard: {
         flexDirection: 'row',
         marginBottom: 15,
         backgroundColor: COLORS.surface,
-        borderRadius: SIZES.radius,
+        borderRadius: 20, // Increased from 16
         overflow: 'hidden',
-        ...SHADOWS.light,
+        ...SHADOWS.small, // Reduced from light to small
     },
-    gridImage: { width: '100%', height: 120 },
-    listImage: { width: 120, height: 120 },
-    cardContent: { padding: 12 },
-    cardTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text },
-    cardPrice: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary, marginTop: 5 },
-    cardMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 5, gap: 5 },
-    cardMetaText: { fontSize: 12, color: COLORS.subText },
-    cardArea: { fontSize: 12, color: COLORS.subText, marginTop: 3 },
+    gridImage: { width: '100%', height: 140 }, // Increased from 120
+    listImage: { width: 130, height: 130 }, // Increased from 120
+
+    // Image overlay for better badge visibility
+    imageOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 60,
+        backgroundColor: 'rgba(0,0,0,0.15)',
+    },
+
+    // Favorite Icon
+    favoriteIcon: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 20,
+    },
+
+    cardContent: { padding: 14 }, // Increased from 12
+    cardTitle: { fontSize: 15, fontWeight: '600', color: COLORS.text, lineHeight: 20 },
+    cardPrice: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary, marginTop: 6 },
+    cardMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 },
+    cardMetaText: { fontSize: 11, color: COLORS.subText, flex: 1 },
+    cardArea: { fontSize: 11, color: COLORS.subText, marginTop: 4, fontWeight: '500' },
 
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     loadingText: { marginTop: 10, color: COLORS.subText },
@@ -252,4 +390,18 @@ const styles = StyleSheet.create({
     emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
     emptyText: { fontSize: 18, fontWeight: '600', color: COLORS.text, marginTop: 15 },
     emptySubText: { fontSize: 14, color: COLORS.subText, marginTop: 5 },
+
+    verifiedBadge: {
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#00897b',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        zIndex: 10
+    },
+    verifiedText: { color: 'white', fontSize: 10, fontWeight: 'bold', marginLeft: 3 },
 });
