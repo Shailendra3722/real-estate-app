@@ -9,3 +9,5 @@ services:
     envVars:
       - key: PORT
         value: 8000
+      - key: DATABASE_URL
+        value: postgresql://postgres:LCSed5i8jyMc5cWr@db.orgytehievyrivbgqjqj.supabase.co:5432/postgres
