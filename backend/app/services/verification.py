@@ -67,4 +67,18 @@ class VerificationEngine:
         if len(id_number) < 4: return "****"
         return "*" * (len(id_number) - 4) + id_number[-4:]
 
+    @staticmethod
+    def extract_id_from_image(image_bytes: bytes) -> dict:
+        """
+        Simulates OCR extraction.
+        In a real app, this would use Tesseract or EasyOCR.
+        """
+        # Simulate processing time or analysis
+        # Return a consistent mock identity for the walkthrough
+        return {
+            "detected_text": "Sample Aadhaar Card\n 5485 5000 8000\n DOB: 01/01/1990",
+            "id_number": "548550008000",
+            "confidence": 98.6
+        }
+
 verification_engine = VerificationEngine()

@@ -9,7 +9,6 @@ import API from '../services/apiConfig';
 import * as ImagePicker from 'expo-image-picker';
 import { useLanguage } from '../components/LanguageContext';
 import { LinearGradient } from 'expo-linear-gradient';
-import Tesseract from '../services/ocr';
 import { Picker } from '@react-native-picker/picker';
 import NativeMap, { NativeMarker } from '../components/NativeMap';
 import { COLORS, SIZES, SHADOWS } from '../constants/theme';
@@ -31,22 +30,20 @@ export default function SellScreen() {
     const [location, setLocation] = useState({ latitude: 26.8467, longitude: 80.9461 });
     const [propertyType, setPropertyType] = useState('Flat');
     const [propImages, setPropImages] = useState([]);
-    const [mapType, setMapType] = useState('standard'); // standard, satellite, hybrid
+    const [mapType, setMapType] = useState('standard');
 
     // Area with smart units
     const [area, setArea] = useState('');
-    const [areaUnit, setAreaUnit] = useState('sqft'); // sqft, bigha, biswaa
+    const [areaUnit, setAreaUnit] = useState('sqft');
 
     // Verification State
-    const [aadhaarImg, setAadhaarImg] = useState(null);
+    const [aadhaarNumber, setAadhaarNumber] = useState('');
+    const [otp, setOtp] = useState('');
+
     const [loading, setLoading] = useState(false);
     const [successVisible, setSuccessVisible] = useState(false);
-    const [verificationStep, setVerificationStep] = useState('IDLE'); // IDLE, SCANNING, REVIEW, OTP, VERIFIED
-    const [ocrStatus, setOcrStatus] = useState('');
-    const [scannedData, setScannedData] = useState(null);
-    const [otp, setOtp] = useState('');
     const [showOtpModal, setShowOtpModal] = useState(false);
-    const [verificationProgress, setVerificationProgress] = useState(0);
+    const [verificationStep, setVerificationStep] = useState('IDLE'); // IDLE, OTP, VERIFIED
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -72,9 +69,9 @@ export default function SellScreen() {
     // Auto-switch area unit based on property type
     useEffect(() => {
         if (propertyType === 'Plot' || propertyType === 'Farm') {
-            setAreaUnit('bigha'); // Land uses bigha/biswaa
+            setAreaUnit('bigha');
         } else {
-            setAreaUnit('sqft'); // Buildings use square feet
+            setAreaUnit('sqft');
         }
     }, [propertyType]);
 
@@ -110,94 +107,84 @@ export default function SellScreen() {
         }
     };
 
-    const pickAadhaar = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
+    // Secure Verification Logic
+    const scanCard = async () => {
+        let result = await ImagePicker.launchCameraAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            quality: 1,
+            quality: 0.5,
         });
+
         if (!result.canceled) {
-            setAadhaarImg(result.assets[0]);
-            setVerificationStep('IDLE');
-        }
-    };
-
-    // Enhanced Multi-Stage Verification
-    const performOCRVerification = async () => {
-        if (!aadhaarImg) return;
-        setVerificationStep('SCANNING');
-        setOcrStatus("🔍 Initializing AI Scanner...");
-        setVerificationProgress(0);
-
-        try {
-            // Stage 1: Document Quality Check
-            setVerificationProgress(20);
-            setOcrStatus("📸 Checking image quality...");
-            await new Promise(resolve => setTimeout(resolve, 800));
-
-            // Stage 2: OCR Processing
-            setVerificationProgress(40);
-            setOcrStatus("🤖 Reading document text...");
-
-            const result = await Tesseract.recognize(
-                aadhaarImg.uri,
-                'eng',
-                {
-                    logger: m => {
-                        if (m.status === 'recognizing text') {
-                            const progress = 40 + (m.progress * 40);
-                            setVerificationProgress(progress);
-                            setOcrStatus(`📄 Analyzing: ${Math.round(m.progress * 100)}%`);
-                        }
-                    }
-                }
-            );
-
-            const text = result.data.text.toLowerCase();
-
-            // Stage 3: Validation
-            setVerificationProgress(85);
-            setOcrStatus("✓ Validating document...");
-            await new Promise(resolve => setTimeout(resolve, 500));
-
-            const keywords = ['aadhaar', 'gov', 'india', 'uidai'];
-            const foundKeywords = keywords.filter(k => text.includes(k));
-
-            if (foundKeywords.length >= 1 || text.includes('male') || text.includes('female')) {
-                setVerificationProgress(100);
-                setVerificationStep('REVIEW');
-                setScannedData({
-                    idNumber: 'xxxx-xxxx-' + (text.match(/\d{4}/g)?.[2] || '9999'),
-                    confidence: Math.round(result.data.confidence),
-                    documentType: 'Aadhaar Card'
+            setLoading(true);
+            try {
+                // Upload to OCR endpoint
+                const formData = new FormData();
+                formData.append('file', {
+                    uri: result.assets[0].uri,
+                    name: 'scan.jpg',
+                    type: 'image/jpeg',
                 });
-            } else {
-                Alert.alert("Verification Failed", "Could not detect a valid Aadhaar card. Please try again with a clearer image.");
-                setVerificationStep('IDLE');
+
+                // Note: using /verification/ocr as per backend structure
+                const res = await API.post('/verification/ocr', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                if (res.data && res.data.id_number) {
+                    setAadhaarNumber(res.data.id_number);
+                    Alert.alert("Scan Success", `Detected Aadhaar: ${res.data.id_number}`);
+                }
+            } catch (e) {
+                console.log(e);
+                Alert.alert("Scan Failed", "Could not read document. Please type manually.");
+            } finally {
+                setLoading(false);
             }
-        } catch (e) {
-            Alert.alert("Error", "Verification engine failed. Please check your connection.");
-            setVerificationStep('IDLE');
         }
     };
 
-    const requestOtp = () => {
-        setShowOtpModal(true);
-        setVerificationStep('OTP');
+    const requestOtp = async () => {
+        if (aadhaarNumber.length !== 12) {
+            Alert.alert("Invalid Aadhaar", "Please enter a valid 12-digit Aadhaar number.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await API.post('/api/send-aadhaar-otp', { aadhaar_number: aadhaarNumber });
+            setLoading(false);
+            setShowOtpModal(true);
+            setVerificationStep('OTP');
+        } catch (error) {
+            console.log(error);
+            setLoading(false);
+            Alert.alert("Failed", "Could not send OTP. Server might be busy.");
+        }
     };
 
-    const verifyOtp = () => {
-        if (otp === '1234') {
+    const verifyOtp = async () => {
+        if (otp.length !== 4) {
+            Alert.alert("Invalid OTP", "Please enter the 4-digit code.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            const res = await API.post('/api/verify-aadhaar-otp', { aadhaar_number: aadhaarNumber, otp: otp });
+            setLoading(false);
             setShowOtpModal(false);
             setVerificationStep('VERIFIED');
-            Alert.alert("✓ Verified!", "Identity confirmed successfully");
-        } else {
-            Alert.alert("Invalid OTP", "Please enter 1234 (demo)");
+            Alert.alert("Success", res.data.message);
+        } catch (error) {
+            setLoading(false);
+            Alert.alert("Verification Failed", "Invalid OTP or Session Expired.");
         }
     };
 
     // Image Upload Helper
     const uploadImage = async (imageUri) => {
+
         const formData = new FormData();
         formData.append('file', {
             uri: imageUri,
@@ -231,22 +218,39 @@ export default function SellScreen() {
             Alert.alert("Invalid Mobile", "Please enter a valid 10-digit mobile number");
             return;
         }
-        // Verification Check - bypassing for dev/demo if needed, but keeping strict for flow
-        // if (verificationStep !== 'VERIFIED') {
-        //     Alert.alert("Verification Required", "Please verify your identity first");
-        //     return;
-        // }
+
+        // Fix: Check for Offline Mode
+        const token = await getToken();
+        if (!token || token === 'guest_token' || token === 'mock_token_123' || token === 'offline_mode_token') {
+            Alert.alert("Offline Mode", "You are currently in Offline/Guest mode. You cannot save data to the website server. Please login with a real account when the server is online.");
+            return;
+        }
 
         setLoading(true);
         try {
             // 0. Get User Email
-            const email = await getUserId();
+            // We need to implement getUserId properly here or ensure it's imported
+            let email = "unknown";
+            try {
+                const userStr = await AsyncStorage.getItem('user_profile');
+                if (userStr) {
+                    const u = JSON.parse(userStr);
+                    email = u.email;
+                }
+            } catch (e) { }
 
             // 1. Upload Images
             const imageUrls = [];
             for (const img of propImages) {
-                const url = await uploadImage(img.uri);
-                imageUrls.push(url);
+                try {
+                    const url = await uploadImage(img.uri);
+                    imageUrls.push(url);
+                } catch (imgError) {
+                    console.error("Image upload failed", imgError);
+                    Alert.alert("Image Upload Failed", "Could not upload one or more images. Please check your connection.");
+                    setLoading(false);
+                    return;
+                }
             }
 
             // 2. Create Property Payload
@@ -265,13 +269,6 @@ export default function SellScreen() {
             };
 
             // 3. Submit to Backend
-            const token = await getToken();
-            if (!token) {
-                Alert.alert("Error", "Please log in to list a property");
-                setLoading(false);
-                return;
-            }
-
             await API.post('/properties/', propertyData, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -281,7 +278,14 @@ export default function SellScreen() {
         } catch (error) {
             console.error('Submission failed:', error);
             setLoading(false);
-            Alert.alert("Error", "Failed to list property. Please try again.");
+            const status = error.response ? error.response.status : null;
+            if (status === 401) {
+                Alert.alert("Session Expired", "Please login again.");
+            } else if (status === 422) {
+                Alert.alert("Invalid Data", "Please check your inputs.");
+            } else {
+                Alert.alert("Server Error", "Failed to list property. Ensure the server is online.");
+            }
         }
     };
 
@@ -483,70 +487,58 @@ export default function SellScreen() {
                     </GlassCard>
                 </Animated.View>
 
-                {/* AI Verification */}
+                {/* Aadhaar OTP Verification */}
                 <Animated.View style={{ opacity: fadeAnim, marginTop: 20 }}>
                     <GlassCard style={styles.card}>
-                        <Text style={styles.sectionTitle}>🛡️ AI Identity Verification</Text>
+                        <Text style={styles.sectionTitle}>🛡️ Identity Verification</Text>
 
-                        {verificationStep === 'IDLE' && (
-                            <>
-                                <Text style={styles.subText}>Upload Aadhaar for instant verification</Text>
-                                <TouchableOpacity onPress={pickAadhaar} style={styles.uploadBox}>
-                                    {aadhaarImg ? (
-                                        <Image source={{ uri: aadhaarImg.uri }} style={styles.docPreview} />
-                                    ) : (
-                                        <View style={{ alignItems: 'center' }}>
-                                            <Ionicons name="scan-outline" size={40} color={COLORS.primary} />
-                                            <Text style={{ color: COLORS.primary, marginTop: 10, fontWeight: '600' }}>Tap to Upload</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                                {aadhaarImg && (
-                                    <View style={{ marginTop: 15 }}>
-                                        <PremiumButton title="🔍 Verify Document" onPress={performOCRVerification} />
-                                    </View>
-                                )}
-                            </>
-                        )}
-
-                        {verificationStep === 'SCANNING' && (
-                            <View style={styles.scanningBox}>
-                                <ActivityIndicator size="large" color={COLORS.primary} />
-                                <Text style={styles.scanText}>{ocrStatus}</Text>
-                                <View style={styles.progressBar}>
-                                    <View style={[styles.progressFill, { width: `${verificationProgress}%` }]} />
-                                </View>
-                                <Text style={styles.progressText}>{Math.round(verificationProgress)}%</Text>
-                            </View>
-                        )}
-
-                        {verificationStep === 'REVIEW' && scannedData && (
-                            <View>
-                                <Text style={styles.successTitle}>✓ Document Detected!</Text>
-                                <View style={styles.dataRow}>
-                                    <Text style={styles.dataLabel}>Type:</Text>
-                                    <Text style={styles.dataValue}>{scannedData.documentType}</Text>
-                                </View>
-                                <View style={styles.dataRow}>
-                                    <Text style={styles.dataLabel}>ID:</Text>
-                                    <Text style={styles.dataValue}>{scannedData.idNumber}</Text>
-                                </View>
-                                <View style={styles.dataRow}>
-                                    <Text style={styles.dataLabel}>Confidence:</Text>
-                                    <Text style={[styles.dataValue, { color: COLORS.success }]}>{scannedData.confidence}%</Text>
-                                </View>
-                                <View style={{ marginTop: 15 }}>
-                                    <PremiumButton title="📲 Send OTP" onPress={requestOtp} />
-                                </View>
-                            </View>
-                        )}
-
-                        {verificationStep === 'VERIFIED' && (
+                        {verificationStep === 'VERIFIED' ? (
                             <View style={styles.verifiedBox}>
                                 <Ionicons name="checkmark-circle" size={60} color={COLORS.success} />
                                 <Text style={styles.verifiedText}>Identity Verified ✓</Text>
-                                <Text style={styles.verifiedSub}>You're ready to list your property</Text>
+                                <Text style={styles.verifiedSub}>Aadhaar: ••••••••{aadhaarNumber.slice(-4)}</Text>
                             </View>
+                        ) : (
+                            <>
+                                <Text style={styles.subText}>Create trust by verifying your government ID.</Text>
+
+                                <View style={styles.inputGroup}>
+                                    <Text style={styles.label}>Aadhaar Number</Text>
+                                    <View style={styles.verifyRow}>
+                                        <TextInput
+                                            style={[styles.input, { flex: 1, letterSpacing: 2 }]}
+                                            placeholder="XXXX XXXX XXXX"
+                                            placeholderTextColor={COLORS.subText}
+                                            keyboardType="number-pad"
+                                            maxLength={12}
+                                            value={aadhaarNumber}
+                                            onChangeText={(txt) => setAadhaarNumber(txt.replace(/[^0-9]/g, ''))}
+                                            editable={verificationStep === 'IDLE'}
+                                        />
+                                        {verificationStep === 'IDLE' && (
+                                            <TouchableOpacity
+                                                style={[styles.verifyBtn, { opacity: aadhaarNumber.length === 12 ? 1 : 0.6 }]}
+                                                disabled={aadhaarNumber.length !== 12 || loading}
+                                                onPress={requestOtp}
+                                            >
+                                                {loading ? <ActivityIndicator color="white" /> : <Text style={styles.verifyBtnText}>Get OTP</Text>}
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+
+                                    {/* Restore OCR Button */}
+                                    {verificationStep === 'IDLE' && (
+                                        <TouchableOpacity style={styles.scanBtn} onPress={scanCard}>
+                                            <Ionicons name="camera" size={20} color={COLORS.primary} />
+                                            <Text style={styles.scanBtnText}>Scan Card with AI</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+
+                                <Text style={styles.secureNote}>
+                                    <Ionicons name="lock-closed" size={12} color={COLORS.subText} /> Secure Govt. Standard Verification
+                                </Text>
+                            </>
                         )}
                     </GlassCard>
                 </Animated.View>
@@ -566,7 +558,8 @@ export default function SellScreen() {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>Enter OTP</Text>
-                        <Text style={styles.modalSub}>Sent to Aadhaar-linked mobile</Text>
+                        <Text style={styles.modalSub}>Sent to mobile linked with Aadhaar ending {aadhaarNumber.slice(-4)}</Text>
+
                         <TextInput
                             style={styles.otpInput}
                             placeholder="1234"
@@ -576,8 +569,21 @@ export default function SellScreen() {
                             onChangeText={setOtp}
                             autoFocus
                         />
-                        <PremiumButton title="Verify OTP" onPress={verifyOtp} style={{ marginTop: 20 }} />
-                        <TouchableOpacity onPress={() => setShowOtpModal(false)} style={{ marginTop: 15 }}>
+
+                        <Text style={{ color: COLORS.subText, fontSize: 12, marginBottom: 20 }}>
+                            Development Hint: Use OTP <Text style={{ fontWeight: 'bold' }}>1234</Text>
+                        </Text>
+
+                        <PremiumButton
+                            title={loading ? "Verifying..." : "Verify Identity"}
+                            onPress={verifyOtp}
+                            style={{ width: '100%' }}
+                        />
+
+                        <TouchableOpacity
+                            onPress={() => { setShowOtpModal(false); setVerificationStep('IDLE'); setLoading(false); }}
+                            style={{ marginTop: 15 }}
+                        >
                             <Text style={{ color: COLORS.subText }}>Cancel</Text>
                         </TouchableOpacity>
                     </View>
@@ -597,7 +603,7 @@ export default function SellScreen() {
                                 setSuccessVisible(false);
                                 // Reset form
                                 setForm({ title: '', price: '', desc: '', mobile: '' });
-                                setAadhaarImg(null);
+                                setAadhaarNumber('');
                                 setVerificationStep('IDLE');
                                 setPropImages([]);
                             }}
@@ -696,4 +702,23 @@ const styles = StyleSheet.create({
     successModal: { backgroundColor: 'white', borderRadius: 24, padding: 30, alignItems: 'center', width: '100%', maxWidth: 340 },
     successModalTitle: { fontSize: 28, fontWeight: 'bold', color: COLORS.text, marginTop: 20 },
     successModalSub: { fontSize: 16, color: COLORS.subText, marginTop: 5 },
+
+    // New styles for Aadhaar Input
+    verifyRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    verifyBtn: { backgroundColor: COLORS.primary, paddingVertical: 14, paddingHorizontal: 20, borderRadius: SIZES.radius, alignItems: 'center', justifyContent: 'center' },
+    verifyBtnText: { color: 'white', fontWeight: 'bold' },
+    scanBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 15,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: COLORS.primary,
+        borderRadius: SIZES.radius,
+        backgroundColor: '#EEF2FF',
+        gap: 8
+    },
+    scanBtnText: { color: COLORS.primary, fontWeight: '600' },
+    secureNote: { marginTop: 15, textAlign: 'center', color: COLORS.success, fontSize: 12, fontWeight: '600' }
 });

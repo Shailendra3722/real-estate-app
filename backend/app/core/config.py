@@ -2,15 +2,13 @@ from pydantic_settings import BaseSettings
 from functools import lru_cache
 
 class Settings(BaseSettings):
-    CLOUDINARY_CLOUD_NAME: str
-    CLOUDINARY_API_KEY: str
-    CLOUDINARY_API_SECRET: str
-    
-    # Database (optional if we want to move it here too, but focusing on Cloudinary for now)
-    # DATABASE_URL: str = "sqlite:///./sql_app.db"
+    CLOUDINARY_CLOUD_NAME: str = "demo"
+    CLOUDINARY_API_KEY: str = "00000000000"
+    CLOUDINARY_API_SECRET: str = "secret"
+    DATABASE_URL: str = "sqlite:///./sql_app.db"
 
     class Config:
-        env_file = ".env"
+        # env_file = ".env" # Disabled to avoid permission issues, using system env vars
         extra = "ignore" # Ignore other env vars if present
 
 @lru_cache()

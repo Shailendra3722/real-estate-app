@@ -1,21 +1,27 @@
 // Ultra-Premium Color Palette
 export const COLORS = {
-    // Primary Brand Colors
-    primary: '#6366F1',      // Indigo 500 - Modern & Trustworthy
-    primaryDark: '#4F46E5',  // Indigo 600
-    primaryLight: '#818CF8', // Indigo 400
+    // Primary Brand Colors - Deep Indigo & Electric Violet
+    primary: '#4F46E5',      // Indigo 600 - Main Brand Color
+    primaryDark: '#4338CA',  // Indigo 700 - Active States
+    primaryLight: '#818CF8', // Indigo 400 - Highlights
 
-    secondary: '#8B5CF6',    // Violet 500 - Creative Touch
-    accent: '#F43F5E',       // Rose 500 - CTAs & Highlights
+    secondary: '#7C3AED',    // Violet 600 - Secondary Brand Color
+    accent: '#F472B6',       // Pink 400 - Eye-catching Accents
+
+    // Gradients
+    gradientStart: '#4F46E5',
+    gradientEnd: '#7C3AED',
 
     // Neutrals
-    background: '#F8FAFC',   // Slate 50 - Clean Background
-    bg: '#F8FAFC',           // Alias
+    background: '#F1F5F9',   // Slate 100 - Clean, airy background
+    bg: '#F1F5F9',           // Alias
     surface: '#FFFFFF',      // Pure White
     card: '#FFFFFF',         // Alias
-    text: '#1E293B',         // Slate 800 - Main Text
+
+    text: '#0F172A',         // Slate 900 - Sharp, high contrast text
+    textLight: '#F8FAFC',    // Slate 50 - Text on dark backgrounds
     subText: '#64748B',      // Slate 500 - Secondary Text
-    border: '#E2E8F0',       // Slate 200 - Borders
+    border: '#E2E8F0',       // Slate 200 - Subtle Borders
 
     // Semantic Colors
     success: '#10B981',      // Emerald 500
@@ -23,69 +29,71 @@ export const COLORS = {
     warning: '#F59E0B',      // Amber 500
 
     // Glassmorphism
-    glass: 'rgba(255, 255, 255, 0.85)',
-    glassBorder: 'rgba(255, 255, 255, 0.5)',
-    overlay: 'rgba(15, 23, 42, 0.6)',
+    glass: 'rgba(255, 255, 255, 0.75)',
+    glassBorder: 'rgba(255, 255, 255, 0.6)',
+    overlay: 'rgba(15, 23, 42, 0.4)',
 };
 
 export const SIZES = {
     // Spacing
     base: 8,
-    padding: 20,
+    padding: 24, // More breathing room
     small: 12,
     medium: 16,
     large: 20,
-    extraLarge: 24,
+    extraLarge: 32,
     icon: 24,
 
     // Typography
-    h1: 32,
-    h2: 24,
-    h3: 18,
+    h1: 34,
+    h2: 26,
+    h3: 20,
     body: 16,
     caption: 14,
+    small: 12,
 
     // Border Radius
-    radius: 16,      // Modern, smooth corners
-    radiusSmall: 8,
-    radiusLarge: 24,
+    radius: 20,      // Smooth, modern curves
+    radiusSmall: 12,
+    radiusLarge: 28,
 };
 
 export const SHADOWS = {
     small: {
         shadowColor: '#64748B',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    light: {
-        shadowColor: '#64748B',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 3,
     },
     medium: {
-        shadowColor: '#6366F1',
+        shadowColor: '#6366F1', // Tinted shadow
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 24,
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
         elevation: 8,
     },
-    heavy: {
-        shadowColor: '#6366F1',
+    large: {
+        shadowColor: '#4F46E5', // Stronger tinted shadow
         shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.2,
-        shadowRadius: 32,
+        shadowOpacity: 0.15,
+        shadowRadius: 24,
         elevation: 12,
     },
+    glow: {
+        shadowColor: '#7C3AED',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 20,
+        elevation: 10,
+    }
 };
 
 export const FONTS = {
     regular: 'System',
     medium: 'System',
     bold: 'System',
+    extraBold: 'System',
 };
 
 export default { COLORS, SIZES, SHADOWS, FONTS };

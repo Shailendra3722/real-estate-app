@@ -283,132 +283,146 @@ export default function BuyScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    container: { flex: 1, backgroundColor: COLORS.background },
-    header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
+    header: { paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20 },
     headerTitle: { fontSize: 28, fontWeight: 'bold', color: 'white' },
     headerSub: { color: 'rgba(255,255,255,0.9)', marginTop: 5 },
 
-    searchSection: { flexDirection: 'row', padding: 15, gap: 10, alignItems: 'center' },
-    toggleContainer: { flexDirection: 'row', paddingHorizontal: 15, paddingBottom: 10, justifyContent: 'flex-end' },
+    searchSection: {
+        paddingHorizontal: 20,
+        marginTop: -25, // Overlapping header effect
+        marginBottom: 15,
+        zIndex: 10
+    },
     searchBar: {
-        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.surface,
-        borderRadius: SIZES.radius,
-        paddingHorizontal: 15,
-        gap: 10,
-        ...SHADOWS.small,
+        borderRadius: SIZES.radiusLarge,
+        paddingHorizontal: 20,
+        height: 56,
+        ...SHADOWS.medium, // Floating effect
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
-    searchInput: { flex: 1, height: 48, fontSize: 16, color: COLORS.text },
-    viewToggle: {
-        width: 48,
-        height: 48,
-        borderRadius: SIZES.radius,
-        backgroundColor: COLORS.surface,
-        justifyContent: 'center',
-        alignItems: 'center',
-        ...SHADOWS.small,
-    },
+    searchInput: { flex: 1, height: '100%', fontSize: 16, color: COLORS.text, marginLeft: 10 },
+
+    toggleContainer: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 15, justifyContent: 'flex-end', alignItems: 'center' },
     sortBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: COLORS.surface,
-        paddingHorizontal: 12,
+        paddingHorizontal: 16,
         height: 40,
         borderRadius: 20,
-        ...SHADOWS.small,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     sortText: {
-        marginLeft: 4,
-        fontSize: 12,
+        marginLeft: 6,
+        fontSize: 13,
         fontWeight: '600',
         color: COLORS.primary,
     },
-
-    filterScroll: { paddingHorizontal: 15, marginBottom: 10 },
-    filterChip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        marginRight: 10,
+    viewToggle: {
+        width: 40,
+        height: 40,
         borderRadius: 20,
+        backgroundColor: COLORS.surface,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: 10,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+    },
+
+    filterScroll: { paddingHorizontal: 20, marginBottom: 20 },
+    filterChip: {
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        marginRight: 10,
+        borderRadius: 25,
         backgroundColor: COLORS.surface,
         borderWidth: 1,
         borderColor: COLORS.border,
     },
-    filterChipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-    filterText: { color: COLORS.text, fontWeight: '600' },
+    filterChipActive: {
+        backgroundColor: COLORS.primary,
+        borderColor: COLORS.primary,
+        ...SHADOWS.glow // Glowing effect for active
+    },
+    filterText: { color: COLORS.subText, fontWeight: '600', fontSize: 14 },
     filterTextActive: { color: 'white' },
 
-    listContent: { padding: 15 },
+    listContent: { paddingHorizontal: 20, paddingBottom: 100 },
+
     gridCard: {
         flex: 1,
         margin: 8,
         backgroundColor: COLORS.surface,
-        borderRadius: 20, // Increased from 16
+        borderRadius: SIZES.radius,
         overflow: 'hidden',
-        ...SHADOWS.small, // Reduced from light to small
+        ...SHADOWS.medium,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
     listCard: {
         flexDirection: 'row',
-        marginBottom: 15,
+        marginBottom: 20,
         backgroundColor: COLORS.surface,
-        borderRadius: 20, // Increased from 16
+        borderRadius: SIZES.radius,
         overflow: 'hidden',
-        ...SHADOWS.small, // Reduced from light to small
+        ...SHADOWS.medium,
+        borderWidth: 1,
+        borderColor: COLORS.border,
     },
-    gridImage: { width: '100%', height: 140 }, // Increased from 120
-    listImage: { width: 130, height: 130 }, // Increased from 120
+    gridImage: { width: '100%', height: 160 },
+    listImage: { width: 140, height: 140 },
 
-    // Image overlay for better badge visibility
     imageOverlay: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         height: 60,
-        backgroundColor: 'rgba(0,0,0,0.15)',
+        backgroundColor: 'rgba(0,0,0,0.2)', // Darker top for icon contrast
     },
 
-    // Favorite Icon
     favoriteIcon: {
         position: 'absolute',
-        top: 8,
-        right: 8,
+        top: 10,
+        right: 10,
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: 'rgba(0,0,0,0.4)',
+        backgroundColor: 'rgba(255,255,255,0.9)', // White bg like Airbnb
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 20,
+        ...SHADOWS.small
     },
 
-    cardContent: { padding: 14 }, // Increased from 12
-    cardTitle: { fontSize: 15, fontWeight: '600', color: COLORS.text, lineHeight: 20 },
-    cardPrice: { fontSize: 18, fontWeight: 'bold', color: COLORS.primary, marginTop: 6 },
-    cardMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 },
-    cardMetaText: { fontSize: 11, color: COLORS.subText, flex: 1 },
-    cardArea: { fontSize: 11, color: COLORS.subText, marginTop: 4, fontWeight: '500' },
-
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 10, color: COLORS.subText },
-
-    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 },
-    emptyText: { fontSize: 18, fontWeight: '600', color: COLORS.text, marginTop: 15 },
-    emptySubText: { fontSize: 14, color: COLORS.subText, marginTop: 5 },
+    cardContent: { padding: 16 },
+    cardTitle: { fontSize: 16, fontWeight: 'bold', color: COLORS.text, marginBottom: 4 },
+    cardPrice: { fontSize: 18, fontWeight: '800', color: COLORS.primary, marginBottom: 6 },
+    cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
+    cardMetaText: { fontSize: 12, color: COLORS.subText, flex: 1 },
+    cardArea: { fontSize: 12, color: COLORS.subText, fontWeight: '500', backgroundColor: COLORS.background, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
 
     verifiedBadge: {
         position: 'absolute',
-        top: 8,
-        left: 8,
+        top: 10,
+        left: 10,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#00897b',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
+        backgroundColor: COLORS.success,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
         zIndex: 10
     },
-    verifiedText: { color: 'white', fontSize: 10, fontWeight: 'bold', marginLeft: 3 },
+    verifiedText: { color: 'white', fontSize: 10, fontWeight: 'bold', marginLeft: 4, letterSpacing: 0.5 },
+
+    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 50 },
+    emptyText: { fontSize: 20, fontWeight: 'bold', color: COLORS.text, marginTop: 20 },
+    emptySubText: { fontSize: 15, color: COLORS.subText, marginTop: 8 },
 });

@@ -12,12 +12,12 @@ export const GlassCard = ({ children, style }) => {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: Platform.OS === 'web' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.9)',
-        backdropFilter: Platform.OS === 'web' ? 'blur(10px)' : undefined,
+        backgroundColor: Platform.OS === 'web' ? COLORS.glass : 'rgba(255, 255, 255, 0.95)',
+        backdropFilter: Platform.OS === 'web' ? 'blur(16px)' : undefined,
         borderRadius: SIZES.radius,
         borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.5)',
+        borderColor: COLORS.glassBorder,
         padding: SIZES.medium,
-        ...SHADOWS.light,
+        ...SHADOWS.small,
     }
 });

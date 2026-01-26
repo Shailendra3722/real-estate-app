@@ -6,6 +6,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import API from './services/apiConfig';
 import { Ionicons } from '@expo/vector-icons';
+import SplashScreen from './components/SplashScreen';
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -13,7 +14,8 @@ export default function LoginScreen() {
 
     // UI State
     const [isLogin, setIsLogin] = useState(true);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true); // Start true for splash check
+    const [authLoading, setAuthLoading] = useState(false); // Separate loading for button
 
     // Form State
     const [email, setEmail] = useState('');
@@ -25,19 +27,21 @@ export default function LoginScreen() {
     const slideAnim = useRef(new Animated.Value(30)).current;
 
     useEffect(() => {
-        // Check if already logged in
+        // Initial Session Check
         checkSession();
 
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 800,
+                delay: 2500, // Wait for splash a bit
                 useNativeDriver: true,
             }),
             Animated.spring(slideAnim, {
                 toValue: 0,
                 tension: 50,
                 friction: 7,
+                delay: 2500,
                 useNativeDriver: true,
             })
         ]).start();
@@ -45,12 +49,19 @@ export default function LoginScreen() {
 
     const checkSession = async () => {
         try {
+            // Artificial delay to show the nice splash screen
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
             const token = await AsyncStorage.getItem('user_token');
             if (token) {
-                // Validate token or just auto-login
-                router.replace('/(tabs)/map');
+                router.replace('/(tabs)/home');
+            } else {
+                setLoading(false); // Show login form
             }
-        } catch (e) { console.log(e); }
+        } catch (e) {
+            console.log(e);
+            setLoading(false);
+        }
     };
 
     const handleAuth = async () => {
@@ -59,7 +70,7 @@ export default function LoginScreen() {
             return;
         }
 
-        setLoading(true);
+        setAuthLoading(true);
         try {
             const endpoint = isLogin ? '/auth/login' : '/auth/register';
             const payload = isLogin
@@ -77,16 +88,45 @@ export default function LoginScreen() {
                 // For legacy components
                 await AsyncStorage.setItem('@user_id_v1', user.email);
 
-                router.replace('/(tabs)/map');
+                router.replace('/(tabs)/home');
             }
         } catch (error) {
             console.error(error);
-            const msg = error.response?.data?.detail || "Something went wrong. Please try again.";
-            Alert.alert("Authentication Failed", msg);
+            // OFFLINE FALLBACK: Explicit warning instead of silent fail
+            Alert.alert(
+                "Connection Issue",
+                "We couldn't connect to the Real Estate Wala Bhai server. You can continue in Offline Mode, but your data will NOT be saved to the website.",
+                [
+                    {
+                        text: "Try Again",
+                        style: "cancel",
+                        onPress: () => setAuthLoading(false)
+                    },
+                    {
+                        text: "Enter Offline Mode",
+                        style: "destructive",
+                        onPress: async () => {
+                            const mockUser = {
+                                email: email || "offline@user.com",
+                                name: fullName || "Offline User",
+                                id: "local_offline_123",
+                                is_offline: true // Mark as offline
+                            };
+                            await AsyncStorage.setItem('user_token', 'offline_mode_token');
+                            await AsyncStorage.setItem('user_profile', JSON.stringify(mockUser));
+                            router.replace('/(tabs)/home');
+                        }
+                    }
+                ]
+            );
         } finally {
-            setLoading(false);
+            setAuthLoading(false);
         }
     };
+
+    if (loading) {
+        return <SplashScreen />;
+    }
 
     return (
         <LinearGradient
@@ -148,9 +188,9 @@ export default function LoginScreen() {
                             style={styles.mainBtn}
                             onPress={handleAuth}
                             activeOpacity={0.9}
-                            disabled={loading}
+                            disabled={authLoading}
                         >
-                            {loading ? (
+                            {authLoading ? (
                                 <ActivityIndicator color="white" />
                             ) : (
                                 <Text style={styles.btnText}>{isLogin ? 'Sign In' : 'Sign Up'}</Text>
@@ -165,10 +205,41 @@ export default function LoginScreen() {
                                 </Text>
                             </Text>
                         </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                Alert.alert(
+                                    "Skip Login",
+                                    "Guest access is limited. You won't be able to save properties.",
+                                    [
+                                        { text: "Cancel", style: "cancel" },
+                                        {
+                                            text: "Continue as Guest",
+                                            onPress: async () => {
+                                                const mockUser = {
+                                                    email: "guest@demo.com",
+                                                    name: "Guest User",
+                                                    id: "guest_123",
+                                                    is_offline: true
+                                                };
+                                                await AsyncStorage.setItem('user_token', 'guest_token');
+                                                await AsyncStorage.setItem('user_profile', JSON.stringify(mockUser));
+                                                router.replace('/(tabs)/home');
+                                            }
+                                        }
+                                    ]
+                                );
+                            }}
+                            style={{ marginTop: 30, alignItems: 'center' }}
+                        >
+                            <Text style={{ color: '#94A3B8', fontSize: 14, textDecorationLine: 'underline' }}>
+                                Having trouble? <Text style={{ color: '#4F46E5', fontWeight: 'bold' }}>Skip Login</Text>
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </Animated.View>
             </KeyboardAvoidingView>
-        </LinearGradient>
+        </LinearGradient >
     );
 }
 

@@ -29,8 +29,12 @@ from .api.endpoints import properties, upload, favorites, auth
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(properties.router, prefix="/properties", tags=["properties"])
 
+from .routers import verification_endpoints
+app.include_router(verification_endpoints.router, prefix="/api", tags=["verification"])
+
+# Legacy/Alternative - keeping for checking
 from .api.endpoints import verification
-app.include_router(verification.router, prefix="/verification", tags=["verification"])
+app.include_router(verification.router, prefix="/verification", tags=["old_verification"])
 
 app.include_router(upload.router, prefix="/api", tags=["upload"])
 

@@ -31,6 +31,12 @@ else
     echo "⚠️  Missing Backend Configuration. Please assume standard Python setup."
 fi
 
+# Check for DATABASE_URL in Render (Instructional)
+echo "🔍 Checking for Database Configuration..."
+echo "ℹ️  On Render.com, you must add the following Environment Variable:"
+echo "   Key: DATABASE_URL"
+echo "   Value: postgresql://postgres:LCSed5i8jyMc5cWr@db.orgytehievyrivbgqjqj.supabase.co:5432/postgres?sslmode=require"
+
 # 3. Deployment Instructions
 echo ""
 echo "=========================================="

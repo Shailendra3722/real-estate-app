@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import API from '../services/apiConfig';
 import { useRouter } from 'expo-router';
+import { GlassCard } from '../components/ui/GlassCard';
 
 // Helper to get persistent ID (copied from FavoritesService for now)
 const USER_ID_KEY = '@user_id_v1';
@@ -39,7 +40,6 @@ export default function ProfileScreen() {
     const [showDocs, setShowDocs] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [newPass, setNewPass] = useState('');
-    const [confirmPass, setConfirmPass] = useState('');
 
     useEffect(() => {
         setupUser();
@@ -115,16 +115,17 @@ export default function ProfileScreen() {
     };
 
     const QuickAction = ({ icon, label, color, onPress }) => (
-        <TouchableOpacity style={[styles.actionBtn, SHADOWS.light]} onPress={onPress}>
+        <TouchableOpacity style={[styles.actionBtn, SHADOWS.small]} onPress={onPress} activeOpacity={0.8}>
             <View style={[styles.actionIcon, { backgroundColor: color + '15' }]}>
                 <Ionicons name={icon} size={24} color={color} />
             </View>
             <Text style={styles.actionLabel}>{label}</Text>
+            <Ionicons name="chevron-forward" size={16} color={COLORS.subText} style={{ marginLeft: 'auto' }} />
         </TouchableOpacity>
     );
 
     const PropertyCard = ({ item }) => (
-        <View style={[styles.propCard, SHADOWS.light]}>
+        <View style={[styles.propCard, SHADOWS.small]}>
             <Image
                 source={{ uri: item.image_urls?.[0] || 'https://via.placeholder.com/100' }}
                 style={styles.propImage}
@@ -143,37 +144,43 @@ export default function ProfileScreen() {
     );
 
     return (
-        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
             {/* Header Section */}
             <LinearGradient
-                colors={[COLORS.primary, '#1E293B']}
+                colors={[COLORS.primary, COLORS.secondary]}
                 style={styles.header}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
             >
                 <View style={styles.profileRow}>
-                    <TouchableOpacity style={styles.avatar} onPress={pickProfilePic}>
-                        {avatar ?
-                            <Image source={{ uri: avatar }} style={{ width: '100%', height: '100%', borderRadius: 40 }} />
-                            : <Text style={styles.avatarText}>{userName[0]?.toUpperCase()}</Text>
-                        }
+                    <TouchableOpacity style={styles.avatarContainer} onPress={pickProfilePic}>
+                        {avatar ? (
+                            <Image source={{ uri: avatar }} style={styles.avatar} />
+                        ) : (
+                            <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                                <Text style={styles.avatarText}>{userName[0]?.toUpperCase()}</Text>
+                            </View>
+                        )}
                         <View style={styles.editAvatarBadge}>
-                            <Ionicons name="add" size={14} color="white" />
+                            <Ionicons name="camera" size={12} color={COLORS.primary} />
                         </View>
                     </TouchableOpacity>
-                    <View>
+
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.userName}>{userName}</Text>
                         <Text style={styles.userEmail}>{userEmail}</Text>
                         <View style={styles.trustRow}>
-                            <Ionicons name="shield-checkmark" size={14} color={COLORS.secondary} />
-                            <Text style={styles.trustText}>Trust Score: 100/100</Text>
+                            <Ionicons name="shield-checkmark" size={14} color="#FBBF24" />
+                            <Text style={styles.trustText}>Verified Member</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Stats Row */}
-                <View style={styles.statsRow}>
+                <GlassCard style={styles.statsRow}>
                     <View style={styles.statItem}>
                         <Text style={styles.statVal}>{myProperties.length}</Text>
-                        <Text style={styles.statLabel}>Listed</Text>
+                        <Text style={styles.statLabel}>Listings</Text>
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.statItem}>
@@ -182,10 +189,10 @@ export default function ProfileScreen() {
                     </View>
                     <View style={styles.divider} />
                     <View style={styles.statItem}>
-                        <Text style={styles.statVal}>5.0★</Text>
+                        <Text style={styles.statVal}>5.0</Text>
                         <Text style={styles.statLabel}>Rating</Text>
                     </View>
-                </View>
+                </GlassCard>
             </LinearGradient>
 
             {/* Content Body */}
@@ -195,11 +202,11 @@ export default function ProfileScreen() {
                     <QuickAction
                         icon="add-circle"
                         label="Sell Property"
-                        color={COLORS.secondary}
+                        color={COLORS.primary}
                         onPress={() => router.push('/(tabs)/sell')}
                     />
-                    <QuickAction icon="heart" label="Favorites" color={COLORS.error} onPress={() => Alert.alert("Coming Soon")} />
-                    <QuickAction icon="document-text" label="My Docs" color={COLORS.primary} onPress={() => setShowDocs(!showDocs)} />
+                    <QuickAction icon="heart" label="Favorites" color={COLORS.accent} onPress={() => Alert.alert("Coming Soon")} />
+                    <QuickAction icon="document-text" label="My Documents" color={COLORS.secondary} onPress={() => setShowDocs(!showDocs)} />
                     <QuickAction icon="settings" label="Settings" color={COLORS.subText} onPress={() => setShowSettings(!showSettings)} />
                 </View>
 
@@ -208,12 +215,14 @@ export default function ProfileScreen() {
                     <View style={styles.expandedSection}>
                         <Text style={styles.expandedTitle}>My Legal Documents</Text>
                         <View style={styles.docItem}>
-                            <Ionicons name="id-card" size={24} color={COLORS.primary} />
-                            <View style={{ marginLeft: 10, flex: 1 }}>
-                                <Text style={styles.docName}>Device ID Verified</Text>
+                            <View style={[styles.actionIcon, { backgroundColor: COLORS.primary + '15' }]}>
+                                <Ionicons name="id-card" size={24} color={COLORS.primary} />
+                            </View>
+                            <View style={{ marginLeft: 15, flex: 1 }}>
+                                <Text style={styles.docName}>Identity Verified</Text>
                                 <Text style={styles.docSub}>{userEmail}</Text>
                             </View>
-                            <Ionicons name="checkmark-circle" size={20} color="green" />
+                            <Ionicons name="checkmark-circle" size={24} color={COLORS.success} />
                         </View>
                     </View>
                 )}
@@ -222,12 +231,14 @@ export default function ProfileScreen() {
                 {showSettings && (
                     <View style={styles.expandedSection}>
                         <Text style={styles.expandedTitle}>Account Settings</Text>
+                        <Text style={styles.inputLabel}>New Password</Text>
                         <TextInput
                             style={styles.settingInput}
-                            placeholder="New Password"
+                            placeholder="Enter new password"
                             secureTextEntry
                             value={newPass}
                             onChangeText={setNewPass}
+                            placeholderTextColor={COLORS.subText}
                         />
                         <TouchableOpacity style={styles.saveBtn} onPress={() => Alert.alert("Password Updated locally")}>
                             <Text style={{ color: 'white', fontWeight: 'bold' }}>Update Password</Text>
@@ -245,7 +256,13 @@ export default function ProfileScreen() {
                 {loading ? (
                     <ActivityIndicator size="small" color={COLORS.primary} />
                 ) : myProperties.length === 0 ? (
-                    <Text style={{ color: COLORS.subText, textAlign: 'center', marginTop: 10 }}>You haven't listed any properties yet.</Text>
+                    <View style={styles.emptyState}>
+                        <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/7486/7486777.png' }} style={{ width: 60, height: 60, opacity: 0.5, marginBottom: 10 }} />
+                        <Text style={{ color: COLORS.subText }}>You haven't listed any properties yet.</Text>
+                        <TouchableOpacity onPress={() => router.push('/(tabs)/sell')}>
+                            <Text style={{ color: COLORS.primary, fontWeight: 'bold', marginTop: 5 }}>List Now</Text>
+                        </TouchableOpacity>
+                    </View>
                 ) : (
                     myProperties.map(item => <PropertyCard key={item.id} item={item} />)
                 )}
@@ -255,54 +272,123 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: COLORS.bg },
-    header: { padding: SIZES.padding, paddingTop: 60, paddingBottom: 30, borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+    container: { flex: 1, backgroundColor: COLORS.background },
+    header: {
+        paddingHorizontal: 20,
+        paddingTop: 60,
+        paddingBottom: 40,
+        borderBottomLeftRadius: 30,
+        borderBottomRightRadius: 30
+    },
     profileRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
+    avatarContainer: { marginRight: 20 },
     avatar: {
-        width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center', alignItems: 'center', marginRight: 20, borderWidth: 2, borderColor: COLORS.secondary
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 3,
+        borderColor: 'white'
     },
     avatarText: { fontSize: 32, fontWeight: 'bold', color: 'white' },
-    verifiedBadge: {
-        position: 'absolute', bottom: 0, right: 0, backgroundColor: COLORS.success,
-        width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center',
-        borderWidth: 2, borderColor: COLORS.primary
+    editAvatarBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        backgroundColor: 'white',
+        width: 28, height: 28, borderRadius: 14,
+        justifyContent: 'center', alignItems: 'center',
+        ...SHADOWS.small
     },
-    userName: { fontSize: 24, fontWeight: 'bold', color: 'white', letterSpacing: 0.5 },
-    userEmail: { fontSize: 14, color: '#94A3B8', marginBottom: 5 },
-    trustRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(217, 119, 6, 0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, alignSelf: 'flex-start' },
-    trustText: { color: COLORS.secondary, marginLeft: 5, fontWeight: '700', fontSize: 12 },
 
-    statsRow: { flexDirection: 'row', justifyContent: 'space-around', backgroundColor: 'rgba(255,255,255,0.1)', padding: 15, borderRadius: 16 },
-    statItem: { alignItems: 'center' },
-    statVal: { fontSize: 20, fontWeight: '800', color: 'white' },
-    statLabel: { fontSize: 12, color: '#94A3B8' },
-    divider: { width: 1, height: '80%', backgroundColor: 'rgba(255,255,255,0.2)' },
+    userName: { fontSize: 24, fontWeight: 'bold', color: 'white' },
+    userEmail: { fontSize: 14, color: 'rgba(255,255,255,0.8)', marginBottom: 8 },
+    trustRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
+        alignSelf: 'flex-start'
+    },
+    trustText: { color: '#FDE047', marginLeft: 6, fontWeight: '700', fontSize: 12 },
 
-    body: { padding: SIZES.padding, marginTop: -20 },
-    sectionHeader: { fontSize: 18, fontWeight: '700', color: COLORS.text, marginBottom: 15 },
+    statsRow: { flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 15, paddingHorizontal: 10 },
+    statItem: { alignItems: 'center', flex: 1 },
+    statVal: { fontSize: 20, fontWeight: '800', color: COLORS.text },
+    statLabel: { fontSize: 12, color: COLORS.subText, marginTop: 2 },
+    divider: { width: 1, height: '80%', backgroundColor: COLORS.border },
+
+    body: { padding: 20, marginTop: -10 },
+    sectionHeader: { fontSize: 18, fontWeight: 'bold', color: COLORS.text, marginBottom: 15 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 15 },
-    seeAll: { color: COLORS.secondary, fontWeight: '600' },
 
-    actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
-    actionBtn: { width: '48%', backgroundColor: 'white', padding: 15, borderRadius: 16, flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
-    actionIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-    actionLabel: { fontSize: 14, fontWeight: '600', color: COLORS.text },
+    actionsGrid: { gap: 12 },
+    actionBtn: {
+        width: '100%',
+        backgroundColor: COLORS.surface,
+        padding: 16,
+        borderRadius: SIZES.radius,
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    actionIcon: {
+        width: 40, height: 40, borderRadius: 12,
+        justifyContent: 'center', alignItems: 'center',
+        marginRight: 16
+    },
+    actionLabel: { fontSize: 16, fontWeight: '600', color: COLORS.text },
 
-    propCard: { backgroundColor: 'white', borderRadius: 16, padding: 12, flexDirection: 'row', marginBottom: 15, alignItems: 'center' },
-    propImage: { width: 60, height: 60, borderRadius: 10, marginRight: 15, backgroundColor: COLORS.bg },
+    propCard: {
+        backgroundColor: COLORS.surface,
+        borderRadius: SIZES.radius,
+        padding: 12,
+        flexDirection: 'row',
+        marginBottom: 15,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: COLORS.border
+    },
+    propImage: { width: 70, height: 70, borderRadius: 12, marginRight: 15, backgroundColor: COLORS.background },
     propInfo: { flex: 1 },
     propTitle: { fontSize: 16, fontWeight: '700', color: COLORS.text, marginBottom: 4 },
-    propPrice: { fontSize: 14, fontWeight: '600', color: COLORS.secondary, marginBottom: 6 },
+    propPrice: { fontSize: 14, fontWeight: '600', color: COLORS.primary, marginBottom: 6 },
     propBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-    deleteBtn: { padding: 10, backgroundColor: '#FEF2F2', borderRadius: 8 },
+    deleteBtn: { padding: 10, backgroundColor: '#FEF2F2', borderRadius: 10 },
 
-    editAvatarBadge: { position: 'absolute', bottom: 0, left: 0, backgroundColor: COLORS.secondary, padding: 3, borderRadius: 10 },
-    expandedSection: { backgroundColor: '#F8FAFC', padding: 15, borderRadius: 12, marginBottom: 20, borderWidth: 1, borderColor: '#eee' },
-    expandedTitle: { fontWeight: 'bold', fontSize: 16, marginBottom: 10, color: COLORS.text },
-    docItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 10, borderRadius: 8, marginBottom: 8 },
-    docName: { fontSize: 14, fontWeight: '600' },
-    docSub: { fontSize: 10, color: COLORS.subText },
-    settingInput: { backgroundColor: 'white', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#ddd', marginBottom: 10 },
-    saveBtn: { backgroundColor: COLORS.primary, padding: 12, borderRadius: 8, alignItems: 'center' }
+    expandedSection: {
+        backgroundColor: COLORS.surface,
+        padding: 20,
+        borderRadius: SIZES.radius,
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        ...SHADOWS.small
+    },
+    expandedTitle: { fontWeight: 'bold', fontSize: 18, marginBottom: 15, color: COLORS.text },
+    docItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.background, padding: 12, borderRadius: 12, marginBottom: 8 },
+    docName: { fontSize: 15, fontWeight: '600', color: COLORS.text },
+    docSub: { fontSize: 12, color: COLORS.subText },
+
+    inputLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8, color: COLORS.subText },
+    settingInput: {
+        backgroundColor: COLORS.background,
+        padding: 14,
+        borderRadius: SIZES.radius,
+        borderWidth: 1,
+        borderColor: COLORS.border,
+        marginBottom: 15,
+        color: COLORS.text
+    },
+    saveBtn: {
+        backgroundColor: COLORS.primary,
+        padding: 15,
+        borderRadius: SIZES.radius,
+        alignItems: 'center',
+        ...SHADOWS.medium
+    },
+
+    emptyState: { alignItems: 'center', padding: 30, backgroundColor: COLORS.surface, borderRadius: SIZES.radius, borderWidth: 1, borderColor: COLORS.border, borderStyle: 'dashed' }
 });

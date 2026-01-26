@@ -51,3 +51,15 @@ async def upload_verification_doc(
         "status": final_status,
         "rejection_reason": rejection_reason
     }
+
+@router.post("/ocr")
+async def ocr_scan_document(
+    file: UploadFile = File(...)
+):
+    """
+    Simulates scanning a document and extracting the ID number.
+    Returns the extracted ID number.
+    """
+    contents = await file.read()
+    result = verification_engine.extract_id_from_image(contents)
+    return result
