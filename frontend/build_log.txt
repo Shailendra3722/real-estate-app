@@ -1,0 +1,63 @@
+Starting Metro Bundler
+[metro-file-map] Cache write error
+: Error: EPERM: operation not permitted, open '/var/folders/jv/kwstjpsx6zb8kdqw9pr709j00000gn/T/metro-file-map-f24b70f4493fc5a97d89fc2f88e68fc4-a911bd1a2f09ad2d9ab7168254c5c873'
+    at open (node:internal/fs/promises:641:25)
+    at Object.writeFile (node:internal/fs/promises:1249:14)
+    at /Applications/REAL ESTATE/frontend/node_modules/metro-file-map/src/cache/DiskCacheManager.js:82:11
+    at DiskCacheManager.write (/Applications/REAL ESTATE/frontend/node_modules/metro-file-map/src/cache/DiskCacheManager.js:108:7)
+    at FileMap._takeSnapshotAndPersist (/Applications/REAL ESTATE/frontend/node_modules/metro-file-map/src/index.js:460:5)
+    at /Applications/REAL ESTATE/frontend/node_modules/metro-file-map/src/index.js:256:9
+    at DependencyGraph.ready (/Applications/REAL ESTATE/frontend/node_modules/metro/src/node-haste/DependencyGraph.js:86:5) {
+  errno: -1,
+  code: 'EPERM',
+  syscall: 'open',
+  path: '/var/folders/jv/kwstjpsx6zb8kdqw9pr709j00000gn/T/metro-file-map-f24b70f4493fc5a97d89fc2f88e68fc4-a911bd1a2f09ad2d9ab7168254c5c873'
+}
+Web Bundled 6914ms index.js (1087 modules)
+
+› Assets (39):
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/AntDesign.3a2ba31570920eeb9b1d217cabe58315.ttf (70.3 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Entypo.31b5ffea3daddc69dd01a1f3d6cf63c5.ttf (66.2 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/EvilIcons.140c53a7643ea949007aa9a282153849.ttf (13.5 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Feather.a76d309774d33d9856f650bed4292a23.ttf (56.2 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome.b06871f281fee6b241d60582ae9369b9.ttf (166 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Brands.3b89dd103490708d19a95adcae52210e.ttf (134 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Regular.1f77739ca9ff2188b539c36f30ffa2be.ttf (33.7 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome5_Solid.605ed7926cf39a2ad5ec2d1f9d391d3d.ttf (203 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Brands.56c8d80832e37783f12c05db7c8849e2.ttf (209 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Regular.370dd5af19f8364907b6e2c41f45dbbf.ttf (68 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/FontAwesome6_Solid.adec7d6f310bc577f05e8fe06a5daccf.ttf (424 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Fontisto.b49ae8ab2dbccb02c4d11caaacf09eab.ttf (314 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Foundation.e20945d7c929279ef7a6f1db184a4470.ttf (57 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.6148e7019854f3bde85b633cb88f3c25.ttf (443 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.b62641afc9ab487008e996a5c5865e56.ttf (1.15 MB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialIcons.4e85bc9ebe07e0340c9c4fc2f6c38908.ttf (357 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Octicons.f7c53c47a66934504fcbc7cc164895a7.ttf (49.4 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/SimpleLineIcons.d2285965fe34b05465047401b8595dd0.ttf (54.1 kB)
+node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Zocial.1681f34aaca71b8dfb70756bca331eb2.ttf (25.8 kB)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon-mask.0a328cd9c1afd0afe8e3b1ec5165b1b4.png (653 B)
+node_modules/@react-navigation/elements/lib/module/assets/back-icon.35ba0eaec5a4f5ed12ca16fabeae451d.png (207 B)
+node_modules/@react-navigation/elements/lib/module/assets/clear-icon.c94f6478e7ae0cdd9f15de1fcb9e5e55.png (4 variations | 425 B)
+node_modules/@react-navigation/elements/lib/module/assets/close-icon.808e1b1b9b53114ec2838071a7e6daa7.png (4 variations | 235 B)
+node_modules/@react-navigation/elements/lib/module/assets/search-icon.286d67d3f74808a60a78d3ebf1a5fb57.png (928 B)
+node_modules/expo-router/assets/error.d1ea1496f9057eb392d5bbf3732a61b7.png (469 B)
+node_modules/expo-router/assets/file.19eeb73b9593a38f8e9f418337fc7d10.png (138 B)
+node_modules/expo-router/assets/forward.d8b800c443b8972542883e0b9de2bdc6.png (188 B)
+node_modules/expo-router/assets/pkg.ab19f4cbc543357183a20571f68380a3.png (364 B)
+node_modules/expo-router/assets/sitemap.412dd9275b6b48ad28f5e3d81bb1f626.png (465 B)
+node_modules/expo-router/assets/unmatched.20e71bdf79e3a97bf55fd9e164041578.png (4.75 kB)
+node_modules/leaflet/dist/images/marker-icon-2x.401d815dc206b8dc1b17cd0e37695975.png (2.46 kB)
+node_modules/leaflet/dist/images/marker-icon.2273e3d8ad9264b7daa5bdbf8e6b47f8.png (1.47 kB)
+node_modules/leaflet/dist/images/marker-shadow.44a526eed258222515aa21eaffd14a96.png (618 B)
+
+› web bundles (3):
+_expo/static/js/web/index-afda797e7f8d9ddb34b99d8c60549746.js (29.4 kB)
+_expo/static/js/web/index-ee024b6af5105d3c2248308b38fb001e.js (2.3 MB)
+_expo/static/js/web/leaflet-src-d41d8cd98f00b204e9800998ecf8427e.js (0 B)
+
+› Files (3):
+favicon.ico (14.5 kB)
+index.html (1.24 kB)
+metadata.json (49 B)
+
+Exported: dist

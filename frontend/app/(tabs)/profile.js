@@ -205,7 +205,7 @@ export default function ProfileScreen() {
                         color={COLORS.primary}
                         onPress={() => router.push('/(tabs)/sell')}
                     />
-                    <QuickAction icon="heart" label="Favorites" color={COLORS.accent} onPress={() => Alert.alert("Coming Soon")} />
+                    <QuickAction icon="heart" label="Favorites" color={COLORS.accent} onPress={() => router.push('/favorites')} />
                     <QuickAction icon="document-text" label="My Documents" color={COLORS.secondary} onPress={() => setShowDocs(!showDocs)} />
                     <QuickAction icon="settings" label="Settings" color={COLORS.subText} onPress={() => setShowSettings(!showSettings)} />
                 </View>
